@@ -5,6 +5,8 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import ImageKit from "imagekit";
+import { userRouter } from "./controllers/userController.js";
+import { generateToken } from "./utils/generateToken.js";
 
 dotenv.config();
 
@@ -16,18 +18,32 @@ app.use(cors({
 }));
 app.use(cookieParser());
 app.use(express.json());
-const imagekit = new ImageKit({
-    publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
-    privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
-    urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
-});
+app.use('/api/user', userRouter);
 
-// Authentication endpoint for ImageKit upload
-app.get("/auth", (req, res) => {
-    const authParams = imagekit.getAuthenticationParameters();
-    res.send(authParams);
-});
+app.post('/jwt_generate', async (req, res) => {
+    const data = req.body;
+    const token = await generateToken(data);
+    res.cookie('token', token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    }).send({message:'token generate successfull'});
+})
 
+app.post('/jwt_remove', async (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    }).send({ message: 'cookie remove successfull' });
+
+})
+
+// const imagekit = new ImageKit({
+//     publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+//     privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+//     urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT,
+// });
 
 
 app.listen(PORT, () => console.log("Server running on port 5000"));
