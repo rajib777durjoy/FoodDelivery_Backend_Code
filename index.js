@@ -4,9 +4,9 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import ImageKit from "imagekit";
 import { userRouter } from "./controllers/userController.js";
 import { generateToken } from "./utils/generateToken.js";
+import { restaurantRouter } from "./controllers/restaurantController.js";
 
 dotenv.config();
 
@@ -19,6 +19,7 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use('/api/user', userRouter);
+app.use('/api/restaurant',restaurantRouter)
 
 app.post('/jwt_generate', async (req, res) => {
     const data = req.body;
