@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { userRouter } from "./controllers/userController.js";
 import { generateToken } from "./utils/generateToken.js";
 import { restaurantRouter } from "./controllers/restaurantController.js";
+import { DeliveryHeroRouter } from "./controllers/DeliveryController.js";
 
 dotenv.config();
 
@@ -19,7 +20,8 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use('/api/user', userRouter);
-app.use('/api/restaurant',restaurantRouter)
+app.use('/api/restaurant',restaurantRouter);
+app.use('/api/deliveryHero',DeliveryHeroRouter);
 
 app.post('/jwt_generate', async (req, res) => {
     const data = req.body;
