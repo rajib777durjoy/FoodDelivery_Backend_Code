@@ -5,6 +5,8 @@ import { db } from "../config/db.js";
 import { food_menu_table, restaurant_table } from "../models/restaurantModel.js";
 import { eq } from "drizzle-orm";
 import { users_table } from "../models/userModel.js";
+import AddToCart_table from "../models/AddToCartModal.js";
+
 
 export const restaurantRouter = express.Router();
 
@@ -146,4 +148,50 @@ restaurantRouter.delete('/food_item_delete/:id', async (req, res) => {
     }
     res.status(200).send({ message: 'food item delete successfull' })
 
+})
+
+restaurantRouter.get('/food_item',async(req,res)=>{
+  const food= await db.select().from(food_menu_table).limit(10);
+//   console.log('food items:::',food);
+  res.status(200).send(food);
+  
+})
+restaurantRouter.get('/Allfood_item',async(req,res)=>{
+  const food= await db.select().from(food_menu_table);
+//   console.log('food items:::',food);
+  res.status(200).send(food);
+  
+})
+
+restaurantRouter.get('/food_details/:id',async(req,res)=>{
+    const id = parseInt(req.params?.id);
+    const foodDetails= await db.select().from(food_menu_table).where(eq(food_menu_table.id,id));
+    console.log('food details:::',foodDetails)
+    if(foodDetails.length === 0){
+    return res.status(404).send({message:'food is not found !'})
+    }
+    res.status(200).send(foodDetails[0])
+})
+
+restaurantRouter.post('/AddToCart/:id',async(req,res)=>{
+    const id = parseInt(req.params?.id);
+    const isExist= await db.select().from(AddToCart_table).where(eq(AddToCart_table.food_id,id));
+    if(isExist.length > 0){
+     return res.status(200).send({message:'This item is already in your cart.'})
+    }
+    const foodQuery = await db.select().from(food_menu_table).where(eq(food_menu_table.id,id));
+    if(foodQuery.length === 0){
+      return res.status(404).send({message:'food item is not found !'})
+    }
+    const data ={food_id:foodQuery[0].id,res_id:foodQuery[0].res_id}
+    const AddToCart = await db.insert(AddToCart_table).values(data).returning()
+    if(AddToCart.length === 0){
+        return res.status(404).send({message:'Failed to add item to cart '})
+    }
+    res.status(200).send({message:'Item added to cart successfully'})
+})
+
+restaurantRouter.post('/food_order/:id',async(req,res)=>{
+    const id =parseInt(req.params?.id);
+    
 })
