@@ -1,0 +1,1 @@
+ALTER TABLE "users_table" ADD COLUMN "socket_id" text DEFAULT '';

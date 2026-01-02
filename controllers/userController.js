@@ -23,7 +23,9 @@ userRouter.post('/user_data', async (req, res) => {
 
 userRouter.get('/user_data', TokenVerify, async (req, res) => {
     const email = req.email;
+    // console.log('email::',email)
     const user = await db.select().from(users_table).where(eq(users_table.email,email));
+    // console.log('get user ::',user)
     if (user.length === 0) {
         return res.status(500).send({ message: 'user is not match' })
     }

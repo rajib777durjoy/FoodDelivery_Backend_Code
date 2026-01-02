@@ -8,15 +8,24 @@ import { userRouter } from "./controllers/userController.js";
 import { generateToken } from "./utils/generateToken.js";
 import { restaurantRouter } from "./controllers/restaurantController.js";
 import { DeliveryHeroRouter } from "./controllers/DeliveryController.js";
+import http from 'http';
+import { socket } from "./controllers/Socket.js";
 
 dotenv.config();
 
 const app = express();
+const server = http.createServer(app)
 const PORT = process.env.PORT || 5000;
 app.use(cors({
     origin: "http://localhost:5173", // frontend URL
     credentials: true, // allow cookies
 }));
+
+
+
+
+
+
 app.use(cookieParser());
 app.use(express.json());
 app.use('/api/user', userRouter);
@@ -49,4 +58,6 @@ app.post('/jwt_remove', async (req, res) => {
 // });
 
 
-app.listen(PORT, () => console.log("Server running on port 5000"));
+server.listen(PORT, () => {
+    socket(server)
+    console.log("Server running on port 5000")});

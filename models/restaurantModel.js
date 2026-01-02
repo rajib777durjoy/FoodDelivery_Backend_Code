@@ -37,8 +37,8 @@ export const order_table = pgTable('order_table', {
     user_id: integer("user_id")
         .references(() => users_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
     food_id: integer("food_id").references(() => food_menu_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
-    delivery_id: integer('delivery_id'),
-    delivery_location: text('delivery_location'),
+    delivery_id: integer('delivery_id').default(null),
+    delivery_location: text('delivery_location').default(" "),
     deliveryTime: timestamp("delivery_time", {
         withTimezone: true,
     }),

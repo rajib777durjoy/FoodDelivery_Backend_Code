@@ -8,5 +8,6 @@ export const users_table = pgTable('users_table', {
   email: varchar('email', { length: 255 }),
   profile: text('profile').default(""),
   role: text('role').default('customer'),
+  socket_id:text('socket_id').default(''),
   createdAt: timestamp('created_at').defaultNow()
 });

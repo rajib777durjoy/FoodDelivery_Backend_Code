@@ -2,10 +2,12 @@ import express from "express";
 import upload from "../middleware/multer.js";
 import { ImageUpload } from "../middleware/cloudinaryImage.js";
 import { db } from "../config/db.js";
-import { food_menu_table, restaurant_table } from "../models/restaurantModel.js";
+import { food_menu_table, order_table, restaurant_table } from "../models/restaurantModel.js";
 import { eq } from "drizzle-orm";
 import { users_table } from "../models/userModel.js";
 import AddToCart_table from "../models/AddToCartModal.js";
+import { getIO } from "./Socket.js";
+import { TokenVerify } from "../middleware/tokenVerifyMiddleware.js";
 
 
 export const restaurantRouter = express.Router();
@@ -122,7 +124,7 @@ restaurantRouter.put('/single_food_item/edit/:id', upload.single('food_image'), 
     } else {
         food_image = data?.food_image;
     }
-    
+
     const updateData = {
         food_name: data.food_name,
         price: Number(data.price),
@@ -132,10 +134,10 @@ restaurantRouter.put('/single_food_item/edit/:id', upload.single('food_image'), 
         description: data.description,
     };
     const food_item = await db.update(food_menu_table).set(updateData).where(eq(food_menu_table.id, id)).returning();
-    if(food_item.length === 0){
-       return res.status(404).send({message:'food_item update Unsuccessfull'}) 
+    if (food_item.length === 0) {
+        return res.status(404).send({ message: 'food_item update Unsuccessfull' })
     }
-    res.status(200).send({message:'food_item update successfull'})
+    res.status(200).send({ message: 'food_item update successfull' })
 })
 
 // food item delete //
@@ -150,48 +152,94 @@ restaurantRouter.delete('/food_item_delete/:id', async (req, res) => {
 
 })
 
-restaurantRouter.get('/food_item',async(req,res)=>{
-  const food= await db.select().from(food_menu_table).limit(10);
-//   console.log('food items:::',food);
-  res.status(200).send(food);
-  
+restaurantRouter.get('/food_item', async (req, res) => {
+    const food = await db.select().from(food_menu_table).limit(10);
+    //   console.log('food items:::',food);
+    res.status(200).send(food);
+
 })
-restaurantRouter.get('/Allfood_item',async(req,res)=>{
-  const food= await db.select().from(food_menu_table);
-//   console.log('food items:::',food);
-  res.status(200).send(food);
-  
+restaurantRouter.get('/Allfood_item', async (req, res) => {
+    const food = await db.select().from(food_menu_table);
+    //   console.log('food items:::',food);
+    res.status(200).send(food);
+
 })
 
-restaurantRouter.get('/food_details/:id',async(req,res)=>{
+restaurantRouter.get('/food_details/:id', async (req, res) => {
     const id = parseInt(req.params?.id);
-    const foodDetails= await db.select().from(food_menu_table).where(eq(food_menu_table.id,id));
-    console.log('food details:::',foodDetails)
-    if(foodDetails.length === 0){
-    return res.status(404).send({message:'food is not found !'})
+    const foodDetails = await db.select().from(food_menu_table).where(eq(food_menu_table.id, id));
+    console.log('food details:::', foodDetails)
+    if (foodDetails.length === 0) {
+        return res.status(404).send({ message: 'food is not found !' })
     }
     res.status(200).send(foodDetails[0])
 })
 
-restaurantRouter.post('/AddToCart/:id',async(req,res)=>{
+restaurantRouter.post('/AddToCart/:id', async (req, res) => {
     const id = parseInt(req.params?.id);
-    const isExist= await db.select().from(AddToCart_table).where(eq(AddToCart_table.food_id,id));
-    if(isExist.length > 0){
-     return res.status(200).send({message:'This item is already in your cart.'})
+    const isExist = await db.select().from(AddToCart_table).where(eq(AddToCart_table.food_id, id));
+    if (isExist.length > 0) {
+        return res.status(200).send({ message: 'This item is already in your cart.' })
     }
-    const foodQuery = await db.select().from(food_menu_table).where(eq(food_menu_table.id,id));
-    if(foodQuery.length === 0){
-      return res.status(404).send({message:'food item is not found !'})
+    const foodQuery = await db.select().from(food_menu_table).where(eq(food_menu_table.id, id));
+    if (foodQuery.length === 0) {
+        return res.status(404).send({ message: 'food item is not found !' })
     }
-    const data ={food_id:foodQuery[0].id,res_id:foodQuery[0].res_id}
+    const data = { food_id: foodQuery[0].id, res_id: foodQuery[0].res_id }
     const AddToCart = await db.insert(AddToCart_table).values(data).returning()
-    if(AddToCart.length === 0){
-        return res.status(404).send({message:'Failed to add item to cart '})
+    if (AddToCart.length === 0) {
+        return res.status(404).send({ message: 'Failed to add item to cart ' })
     }
-    res.status(200).send({message:'Item added to cart successfully'})
+    res.status(200).send({ message: 'Item added to cart successfully' })
 })
 
-restaurantRouter.post('/food_order/:id',async(req,res)=>{
-    const id =parseInt(req.params?.id);
-    
+// food order system //
+restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
+    const id = parseInt(req.params?.id);
+    const email = req.email;
+    if (!req.email) {
+        return res.status(404).send({ message: 'Unauthorize access !' })
+    }
+    try {
+        const data = await db
+            .select({
+                food_id: food_menu_table.id,
+                food_name: food_menu_table.food_name,
+                price: food_menu_table.price,
+                restaurant_id: restaurant_table.id,
+                restaurant_name: restaurant_table.restaurant_name,
+                user_id: restaurant_table.user_id
+            })
+            .from(food_menu_table)
+            .innerJoin(
+                restaurant_table,
+                eq(food_menu_table.res_id, restaurant_table.id)
+            )
+            .where(eq(food_menu_table.id, id));
+
+        console.log(data);
+        
+        const order_food= await db.insert(order_table).values({user_id:data[0].user_id,food_id:data[0].food_id}).returning();
+        if(order_food.length === 0){
+            return res.status(404).send({message:"Failed to create order. Please try again."})
+        }
+
+        const user_id = data[0].user_id;
+        const user = await db.select({ socket_id: users_table.socket_id }).from(users_table).where(eq(users_table.id, user_id));
+        console.log('user order::', user)
+
+        const io = await getIO();
+
+        if (user.length && user[0].socket_id) {
+            const socket_id = user[0].socket_id;
+            io.to(socket_id).emit('notification', { message: 'new order request !!' });
+        } else {
+            console.log('User is not connected via socket');
+        }
+
+    } catch (err) {
+        console.log('error', err)
+    }
+
+
 })
