@@ -10,6 +10,7 @@ import { restaurantRouter } from "./controllers/restaurantController.js";
 import { DeliveryHeroRouter } from "./controllers/DeliveryController.js";
 import http from 'http';
 import { socket } from "./controllers/Socket.js";
+import paymentIntrigate from "./utils/sslCommersIntrigate.js";
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use(express.json());
 app.use('/api/user', userRouter);
 app.use('/api/restaurant',restaurantRouter);
 app.use('/api/deliveryHero',DeliveryHeroRouter);
+app.use('/api/payment',paymentIntrigate)
 
 app.post('/jwt_generate', async (req, res) => {
     const data = req.body;
