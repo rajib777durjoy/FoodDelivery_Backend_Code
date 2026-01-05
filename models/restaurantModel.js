@@ -39,6 +39,12 @@ export const order_table = pgTable('order_table', {
     food_id: integer("food_id").references(() => food_menu_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
     delivery_id: integer('delivery_id').default(null),
     delivery_location: text('delivery_location').default(" "),
+    payment:numeric('payment',{precision: 10,scale: 2,}).notNull(),
+    dueAmount:numeric('dueAmount',{precision: 10,scale: 2,}),
+    customer_phone: text('customer_phone'),
+    payment_method: text('payment_method').default(''),
+    payment_tran_id: text('payment_tran_id').default(''),
+    payment_status: boolean('payment_status').default(false),
     deliveryTime: timestamp("delivery_time", {
         withTimezone: true,
     }),

@@ -1,0 +1,1 @@
+ALTER TABLE "order_table" ADD COLUMN "payment" numeric(10, 2) NOT NULL;

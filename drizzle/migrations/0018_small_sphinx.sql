@@ -1,0 +1,1 @@
+ALTER TABLE "order_table" ADD COLUMN "dueAmount" numeric(10, 2);

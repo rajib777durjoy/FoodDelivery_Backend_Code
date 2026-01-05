@@ -3,7 +3,7 @@ import upload from "../middleware/multer.js";
 import { ImageUpload } from "../middleware/cloudinaryImage.js";
 import { db } from "../config/db.js";
 import { food_menu_table, order_table, restaurant_table } from "../models/restaurantModel.js";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { users_table } from "../models/userModel.js";
 import AddToCart_table from "../models/AddToCartModal.js";
 import { getIO } from "./Socket.js";
@@ -168,16 +168,48 @@ restaurantRouter.get('/Allfood_item', async (req, res) => {
 restaurantRouter.get('/food_details/:id', async (req, res) => {
     const id = parseInt(req.params?.id);
     const foodDetails = await db.select().from(food_menu_table).where(eq(food_menu_table.id, id));
-    console.log('food details:::', foodDetails)
+    // console.log('food details:::', foodDetails)
     if (foodDetails.length === 0) {
         return res.status(404).send({ message: 'food is not found !' })
     }
     res.status(200).send(foodDetails[0])
 })
-
-restaurantRouter.post('/AddToCart/:id', async (req, res) => {
-    const id = parseInt(req.params?.id);
-    const isExist = await db.select().from(AddToCart_table).where(eq(AddToCart_table.food_id, id));
+// get addtocart-database-table data //
+restaurantRouter.get('/cart_item_list/:email', TokenVerify, async (req, res) => {
+    const { email } = req.params;
+    if (email !== req.email) {
+        return res.status(401).send({ message: 'Unauthorized user access !' })
+    }
+    const user = await db.select().from(users_table).where(eq(users_table.email, email));
+    const user_id = user[0].id;
+    const cart_item = await db.select().from(AddToCart_table).where(eq(AddToCart_table.user_id, user_id));
+    if (cart_item.length === 0) {
+        return res.status(404).send({ message: 'Cart_item is not found !' })
+    }
+    const cartItems = await db
+        .select({
+            cart_id: AddToCart_table.id,
+            quantity: AddToCart_table.quantity,
+            food_id: food_menu_table.id,
+            food_name: food_menu_table.food_name,
+            price: food_menu_table.price,
+            food_image: food_menu_table.food_image,
+            category: food_menu_table.category,
+            description: food_menu_table.description,
+        })
+        .from(AddToCart_table)
+        .innerJoin(food_menu_table, eq(AddToCart_table.food_id, food_menu_table.id))
+        .where(eq(AddToCart_table.user_id, user_id));
+    // console.log('cart item join::', cartItems)
+    res.status(200).send(cartItems)
+})
+/// post in addtocart database table //
+restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
+    const id = parseInt(req.params?.id); // food_id
+    const { quantity } = req.body; // order item count //
+    const user = await db.select().from(users_table).where(eq(users_table.email, req?.email));
+    const user_id = user[0].id;
+    const isExist = await db.select().from(AddToCart_table).where(and(eq(AddToCart_table.food_id, id), eq(AddToCart_table.user_id, user_id)));
     if (isExist.length > 0) {
         return res.status(200).send({ message: 'This item is already in your cart.' })
     }
@@ -185,12 +217,22 @@ restaurantRouter.post('/AddToCart/:id', async (req, res) => {
     if (foodQuery.length === 0) {
         return res.status(404).send({ message: 'food item is not found !' })
     }
-    const data = { food_id: foodQuery[0].id, res_id: foodQuery[0].res_id }
+    const data = { food_id: foodQuery[0].id, res_id: foodQuery[0].res_id, user_id, quantity }
     const AddToCart = await db.insert(AddToCart_table).values(data).returning()
     if (AddToCart.length === 0) {
         return res.status(404).send({ message: 'Failed to add item to cart ' })
     }
     res.status(200).send({ message: 'Item added to cart successfully' })
+})
+
+// cart item delete //
+restaurantRouter.delete('/cart_item_delete/:id',async(req,res)=>{
+    const id = parseInt(req.params?.id);
+    const delete_item = await db.delete(AddToCart_table).where(eq(AddToCart_table.id,id)).returning();
+    if(delete_item.length === 0){
+     return res.status(404).send({message:'Delete Cart item failed'})
+    }
+    res.status(200).send({message:'Delete successfull'})
 })
 
 // food order system //
@@ -218,11 +260,11 @@ restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
             .where(eq(food_menu_table.id, id));
 
         console.log(data);
-        
-        const order_food= await db.insert(order_table).values({user_id:data[0].user_id,food_id:data[0].food_id}).returning();
-        if(order_food.length === 0){
-            return res.status(404).send({message:"Failed to create order. Please try again."})
-        }
+
+        // const order_food= await db.insert(order_table).values({user_id:data[0].user_id,food_id:data[0].food_id}).returning();
+        // if(order_food.length === 0){
+        //     return res.status(404).send({message:"Failed to create order. Please try again."})
+        // }
 
         const user_id = data[0].user_id;
         const user = await db.select({ socket_id: users_table.socket_id }).from(users_table).where(eq(users_table.id, user_id));
@@ -242,4 +284,16 @@ restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
     }
 
 
+})
+
+// get my order data ///
+restaurantRouter.get('/my_order_list/:email', TokenVerify, async (req, res) => {
+    const { email } = req.params;
+    if (email !== req.email) {
+        return res.status(403).send({ message: 'Unauthorized user access !' })
+    }
+    const user = await db.select().from(users_table).where(eq(users_table.email, email));
+    const user_id = user[0].id;
+    const order_list = await db.select().from(order_table).where(eq(order_table.user_id, user_id));
+    res.status(200).send(order_list);
 })

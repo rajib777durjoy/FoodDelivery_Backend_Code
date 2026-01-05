@@ -1,0 +1,1 @@
+ALTER TABLE "AddToCart_table" ADD COLUMN "quantity" integer DEFAULT 1;
