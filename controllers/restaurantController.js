@@ -226,13 +226,13 @@ restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
 })
 
 // cart item delete //
-restaurantRouter.delete('/cart_item_delete/:id',async(req,res)=>{
+restaurantRouter.delete('/cart_item_delete/:id', async (req, res) => {
     const id = parseInt(req.params?.id);
-    const delete_item = await db.delete(AddToCart_table).where(eq(AddToCart_table.id,id)).returning();
-    if(delete_item.length === 0){
-     return res.status(404).send({message:'Delete Cart item failed'})
+    const delete_item = await db.delete(AddToCart_table).where(eq(AddToCart_table.id, id)).returning();
+    if (delete_item.length === 0) {
+        return res.status(404).send({ message: 'Delete Cart item failed' })
     }
-    res.status(200).send({message:'Delete successfull'})
+    res.status(200).send({ message: 'Delete successfull' })
 })
 
 // food order system //
@@ -296,4 +296,75 @@ restaurantRouter.get('/my_order_list/:email', TokenVerify, async (req, res) => {
     const user_id = user[0].id;
     const order_list = await db.select().from(order_table).where(eq(order_table.user_id, user_id));
     res.status(200).send(order_list);
+})
+
+// get all order list by restaurant owner id //
+
+
+restaurantRouter.get('/order_list/:id', async (req, res) => {
+    try {
+        const id = Number(req.params.id);
+
+        if (isNaN(id)) {
+            return res.status(400).send({ message: "Invalid user id" });
+        }
+
+        const orderWithFood = await db
+            .select({
+                order_id: order_table.id,
+                quantity: order_table.quantity,
+                payment: order_table.payment,
+                dueAmount: order_table.dueAmount,
+                customer_phone: order_table.customer_phone,
+                payment_tran_id: order_table.payment_tran_id,
+                payment_status: order_table.payment_status,
+
+                food_name: food_menu_table.food_name,
+                food_image: food_menu_table.food_image,
+            })
+            .from(order_table)
+            .innerJoin(
+                food_menu_table,
+                eq(order_table.food_id, food_menu_table.id)
+            )
+            .where(eq(order_table.user_id, id));
+        if (orderWithFood.length === 0) {
+            return res.status(404).send({ message: 'order is not found' });
+        }
+        console.log('orderfood::', orderWithFood)
+
+        res.status(200).send(orderWithFood);
+
+    } catch (error) {
+        console.error("Order List Error:", error);
+        res.status(500).send({ message: "Internal server error" });
+    }
+});
+
+/// all order list for delivery dashboard panel ///
+restaurantRouter.get('/all_order_list', async (req, res) => {
+    const orderWithFood = await db
+        .select({
+            order_id: order_table.id,
+            quantity: order_table.quantity,
+            payment: order_table.payment,
+            dueAmount: order_table.dueAmount,
+            customer_phone: order_table.customer_phone,
+            payment_tran_id: order_table.payment_tran_id,
+            payment_status: order_table.payment_status,
+            delivery_location:order_table.delivery_location,
+            status:order_table.status,
+            food_name: food_menu_table.food_name,
+            food_image: food_menu_table.food_image,
+        })
+        .from(order_table)
+        .innerJoin(
+            food_menu_table,
+            eq(order_table.food_id, food_menu_table.id)
+        ) ;
+    if(orderWithFood.length === 0){
+        return res.status(404).send({message:'order food is not found !'})
+    }
+    console.log('order for delivery page::',orderWithFood);
+    res.status(200).send(orderWithFood);
 })

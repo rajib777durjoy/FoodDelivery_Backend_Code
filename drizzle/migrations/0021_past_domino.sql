@@ -1,0 +1,1 @@
+ALTER TABLE "order_table" ADD COLUMN "quantity" numeric DEFAULT 1;
