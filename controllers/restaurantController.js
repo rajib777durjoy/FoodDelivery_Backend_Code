@@ -8,6 +8,7 @@ import { users_table } from "../models/userModel.js";
 import AddToCart_table from "../models/AddToCartModal.js";
 import { getIO } from "./Socket.js";
 import { TokenVerify } from "../middleware/tokenVerifyMiddleware.js";
+import { delivery_table } from "../models/deliveryModel.js";
 
 
 export const restaurantRouter = express.Router();
@@ -342,7 +343,17 @@ restaurantRouter.get('/order_list/:id', async (req, res) => {
 });
 
 /// all order list for delivery dashboard panel ///
-restaurantRouter.get('/all_order_list', async (req, res) => {
+restaurantRouter.get('/all_order_list',TokenVerify, async (req, res) => {
+    const user = await db.select().from(users_table).where(eq(users_table.email,req?.email));
+    if(user.length === 0){
+        return res.status(400).send({message:'user is not found'})
+    }
+    const user_id = user[0].id;
+    const deliverInfo= await db.select().from(delivery_table).where(eq(delivery_table.user_id,user_id));
+    if(deliverInfo.length === 0){
+       return res.status(400).send({message:'deliverInfo is not found'})
+    }
+    const delivery_id= deliverInfo[0].id;
     const orderWithFood = await db
         .select({
             order_id: order_table.id,
@@ -361,7 +372,7 @@ restaurantRouter.get('/all_order_list', async (req, res) => {
         .innerJoin(
             food_menu_table,
             eq(order_table.food_id, food_menu_table.id)
-        ) ;
+        ).where(eq(order_table.delivery_id,delivery_id));
     if(orderWithFood.length === 0){
         return res.status(404).send({message:'order food is not found !'})
     }

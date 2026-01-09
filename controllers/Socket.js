@@ -27,7 +27,7 @@ export const socket = (server) => {
         socket.on("disconnect", async () => {
             console.log("User disconnected:", socket.id);
             const socketId = await db.update(users_table).set({ socket_id: " " }).where(eq(users_table.socket_id, socket.id)).returning();
-            // console.log('socketId update::', socketId);
+            console.log('socketId update::', socketId);
         });
     });
     return io ;
