@@ -288,20 +288,29 @@ restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
 })
 
 // get my order data ///
+restaurantRouter.get('/my_payment_inbox/:email', TokenVerify, async (req, res) => {
+    const { email } = req.params;
+    if (email !== req.email) {
+        return res.status(403).send({ message: 'Unauthorized user access !' })
+    }
+    const user = await db.select().from(users_table).where(eq(users_table.email, email));
+    const user_id = user[0].id; // order-table cus_id === paid payment user //
+    const order_list = await db.select().from(order_table).where(eq(order_table.cus_id, user_id));
+    res.status(200).send(order_list);
+})
 restaurantRouter.get('/my_order_list/:email', TokenVerify, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(403).send({ message: 'Unauthorized user access !' })
     }
     const user = await db.select().from(users_table).where(eq(users_table.email, email));
-    const user_id = user[0].id;
-    const order_list = await db.select().from(order_table).where(eq(order_table.user_id, user_id));
+    const user_id = user[0].id; // order-table cus_id === paid payment user //
+    const order_list = await db.select().from(order_table).where(eq(order_table.cus_id, user_id));
+    // console.log('order_list',order_list)
     res.status(200).send(order_list);
 })
 
-// get all order list by restaurant owner id //
-
-
+// get all order list by restaurant owner id // 
 restaurantRouter.get('/order_list/:id', async (req, res) => {
     try {
         const id = Number(req.params.id);
@@ -319,7 +328,7 @@ restaurantRouter.get('/order_list/:id', async (req, res) => {
                 customer_phone: order_table.customer_phone,
                 payment_tran_id: order_table.payment_tran_id,
                 payment_status: order_table.payment_status,
-
+                status:order_table.status,
                 food_name: food_menu_table.food_name,
                 food_image: food_menu_table.food_image,
             })
@@ -328,7 +337,7 @@ restaurantRouter.get('/order_list/:id', async (req, res) => {
                 food_menu_table,
                 eq(order_table.food_id, food_menu_table.id)
             )
-            .where(eq(order_table.user_id, id));
+            .where(eq(order_table.owner_id, id));
         if (orderWithFood.length === 0) {
             return res.status(404).send({ message: 'order is not found' });
         }

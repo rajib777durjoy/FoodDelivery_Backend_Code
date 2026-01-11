@@ -3,7 +3,7 @@ import { db } from '../config/db.js';
 import { delivery_table } from '../models/deliveryModel.js';
 import { TokenVerify } from '../middleware/tokenVerifyMiddleware.js';
 import { users_table } from '../models/userModel.js';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 import { order_table } from '../models/restaurantModel.js';
 import { getIO } from './Socket.js';
 import notification_table from '../models/NotificationModal.js';
@@ -49,9 +49,9 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, async (req, res) => {
     if (email !== req.email) {
         return res.status(401).send({ message: 'Unauthorized user access ' })
     }
-    const deliver_man = await db.select().from(users_table).where(eq(users_table.role, 'deliver_hero'));
-    
-    
+    // const deliver_man = await db.select().from(users_table).where(eq(users_table.role, 'deliver_hero'));
+
+
     const user_Join_deliverHero = await db
         .select({
             user_id: users_table.id,
@@ -85,7 +85,7 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
     if (updateDeliverStatus.length === 0) {
         return res.status(400).send({ message: 'Delivery_table Update Failed' })
     }
-    const Add_DeliverId_IN_Order_table = await db.update(order_table).set({ delivery_id: id,status:'on_the_way' }).where(eq(order_table.id, parseInt(order_id))).returning();
+    const Add_DeliverId_IN_Order_table = await db.update(order_table).set({ delivery_id: id, status: 'On_the_way' }).where(eq(order_table.id, parseInt(order_id))).returning();
     if (Add_DeliverId_IN_Order_table.length === 0) {
         return res.status(400).send({ message: 'Order_table delivery_id Set Failed' })
     }
@@ -103,8 +103,29 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
     const io = await getIO();
     io.to(socket_id).emit('order-assigned', { message: `New order assigned: #${order_id}` });
 
-    res.status(200).send({ message: 'Update Successfull !' })
+    res.status(200).send({ message: 'Booking Successfull !' })
 
+})
+
+// order list for find the deliver_history //
+DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, async (req, res) => {
+    const {id,email} = req.params; // id is string  //
+    console.log(id,email)
+    if (email !== req.email) {
+        return res.status(401).send({ message: "Unauthorized user access !" })
+    }
+
+    const order_list = await db.select({
+        id: order_table.id,customer:users_table.fullname, deliverMan: order_table.delivery_id,
+        amount: order_table.payment, DueAmount: order_table.dueAmount,
+        cus_phone: order_table.customer_phone,
+        status: order_table.status
+    }).from(order_table).innerJoin(users_table,eq(users_table.id,order_table.cus_id)).where(and(eq(order_table.owner_id,parseInt(id)),isNotNull(order_table.delivery_id)));
+    console.log('order list for delivery::: ',order_list)
+    if (order_list.length === 0) {
+        return res.status(400).send({ message: 'order is not found !' })
+    }
+    res.status(200).send(order_list)
 })
 
 

@@ -34,7 +34,9 @@ export const food_menu_table = pgTable('food_menu_table', {
 // user_id for customer user_table.id and  customer will defiend delivery location //
 export const order_table = pgTable('order_table', {
     id: serial('id').primaryKey(),
-    user_id: integer("user_id")
+    owner_id: integer("owner_id")
+        .references(() => users_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
+    cus_id: integer("cus_id")
         .references(() => users_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
     food_id: integer("food_id").references(() => food_menu_table.id, { onUpdate: "cascade", onDelete: "cascade" }),
     delivery_id: integer('delivery_id').default(null),
