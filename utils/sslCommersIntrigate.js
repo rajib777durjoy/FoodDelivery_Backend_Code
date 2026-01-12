@@ -8,6 +8,7 @@ import { users_table } from '../models/userModel.js';
 import { eq, or } from 'drizzle-orm';
 import { food_menu_table, order_table, restaurant_table } from '../models/restaurantModel.js';
 import { delivery_table } from '../models/deliveryModel.js';
+import sendEmail from './nodemiller.js';
 dotenv.config();
 
 const store_id = process.env.SSLCOMMERZ_STORE_ID;
@@ -112,14 +113,14 @@ paymentIntrigate.post('/duepayment_init', TokenVerify, async (req, res) => {
     try {
         const { order_id } = req.body;
         const order_info = await db.select().from(order_table).where(eq(order_table.id, parseInt(order_id)));
-        const { owner_id, dueAmount, cus_id,customer_phone,food_id,delivery_id,delivery_location,payment_tran_id } = order_info[0];
-        const userInfo= await db.select().from(users_table).where(eq(users_table.id,cus_id));
-        const foodInfo = await db.select().from(food_menu_table).where(eq(food_menu_table.id,food_id));
-        const deliveryInfo = await db.select().from(delivery_table).where(eq(delivery_table.id,delivery_id));
-        
+        const { owner_id, dueAmount, cus_id, customer_phone, food_id, delivery_id, delivery_location, payment_tran_id } = order_info[0];
+        const userInfo = await db.select().from(users_table).where(eq(users_table.id, cus_id));
+        const foodInfo = await db.select().from(food_menu_table).where(eq(food_menu_table.id, food_id));
+        const deliveryInfo = await db.select().from(delivery_table).where(eq(delivery_table.id, delivery_id));
 
-        const {fullname,email}= userInfo[0];
-        const {food_name} = foodInfo[0];
+
+        const { fullname, email } = userInfo[0];
+        const { food_name } = foodInfo[0];
         // Transaction ID
         // const tran_id = "TXN_" + Date.now() + "_" + Math.floor(Math.random() * 1000);
 
@@ -136,7 +137,7 @@ paymentIntrigate.post('/duepayment_init', TokenVerify, async (req, res) => {
             product_name: food_name,
             product_category: 'Food',
             product_profile: 'general',
-            cus_name:fullname,
+            cus_name: fullname,
             cus_email: email,
             cus_add1: delivery_location,
             cus_add2: 'Dhaka',
@@ -144,9 +145,9 @@ paymentIntrigate.post('/duepayment_init', TokenVerify, async (req, res) => {
             cus_state: 'Dhaka',
             cus_postcode: '1000',
             cus_country: 'Bangladesh',
-            cus_phone:customer_phone,
+            cus_phone: customer_phone,
             cus_fax: '01711111111',
-            ship_name:fullname,
+            ship_name: fullname,
             ship_add1: 'Dhaka',
             ship_add2: 'Dhaka',
             ship_city: 'Dhaka',
@@ -185,24 +186,29 @@ paymentIntrigate.post('/payment/success/:tran_id', async (req, res) => {
 // success payment for due amount //
 paymentIntrigate.post('/payment/success/dueamount/:tran_id', async (req, res) => {
     const tran_id = req.params?.tran_id;
-    const order_info = await db.select().from(order_table).where(eq(order_table.payment_tran_id,tran_id));
-    if(order_info.length === 0){
-        return res.status(400).send({message:'Transaction ID mismatch'})
+    const OTP = Math.floor(1000 + Math.random() * 9000);
+    const order_info = await db.select().from(order_table).where(eq(order_table.payment_tran_id, tran_id));
+    if (order_info.length === 0) {
+        return res.status(400).send({ message: 'Transaction ID mismatch' })
     }
-    const {delivery_id,cus_id}= order_info[0];
-    const userInfo = await db.select().from(users_table).where(eq(users_table.id,cus_id));
-    const deliverHero_info= await db.select().from(delivery_table).where(eq(delivery_table.id,delivery_id));
-    if(deliverHero_info.length=== 0 && userInfo.length === 0){
-         return res.status(400).send({message:'delivery and user data is not found !'})
+    const { delivery_id, cus_id } = order_info[0];
+    const userInfo = await db.select().from(users_table).where(eq(users_table.id, cus_id));
+    const deliverHero_info = await db.select().from(delivery_table).where(eq(delivery_table.id, delivery_id));
+    if (deliverHero_info.length === 0 && userInfo.length === 0) {
+        return res.status(400).send({ message: 'delivery and user data is not found !' })
     }
-    const {email} = deliverHero_info[0];
-    const {email:cus_email}=userInfo[0];
+    const { email:deliverman_email } = deliverHero_info[0];
+    const { email:cus_email } = userInfo[0];
     console.log('tranId:', tran_id)
-    const updateOrder = await db.update(order_table).set({dueAmount:0.00}).where(eq(order_table.payment_tran_id, tran_id)).returning()
+    const updateOrder = await db.update(order_table).set({ dueAmount: 0.00, OTP: OTP }).where(eq(order_table.payment_tran_id, tran_id)).returning()
     if (updateOrder.length > 0) {
-       // here is nodemiler function for send OTP in email //
-
-       return res.redirect(`${process.env.FRONTEND_URL}/payment/success/${tran_id}`)
+        // here is nodemiler function for send OTP in email //
+        const subject='Your OTP Code'
+        const deliver_sub='Your Customer OTP Code';
+        const html =`<h1>Your OTP is: ${OTP}</h1>`;
+        await sendEmail({to:cus_email,subject,html}) /// send email to customer  //
+        await sendEmail({to:deliverman_email,subject:deliver_sub,html}) /// send email to delivery man //
+        return res.redirect(`${process.env.FRONTEND_URL}/payment/success/${tran_id}`)
     }
 })
 

@@ -218,6 +218,13 @@
       "when": 1768059504242,
       "tag": "0030_square_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1768229835449,
+      "tag": "0031_charming_blue_shield",
+      "breakpoints": true
     }
   ]
 }

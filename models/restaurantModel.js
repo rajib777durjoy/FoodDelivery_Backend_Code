@@ -52,5 +52,6 @@ export const order_table = pgTable('order_table', {
         withTimezone: true,
     }),
     status: varchar('status', { length: 50 }).default('panding'),
+    OTP:integer('OTP').default(null),
     created_at: timestamp('created_at').defaultNow()
 })
