@@ -205,7 +205,7 @@ paymentIntrigate.post('/payment/success/dueamount/:tran_id', async (req, res) =>
         // here is nodemiler function for send OTP in email //
         const subject='Your OTP Code'
         const deliver_sub='Your Customer OTP Code';
-        const html =`<h1>Your OTP is: ${OTP}</h1>`;
+        const html =`<h1>Your OTP is: ${OTP} <br>  Tranx_id:${tran_id}</h1>`;
         await sendEmail({to:cus_email,subject,html}) /// send email to customer  //
         await sendEmail({to:deliverman_email,subject:deliver_sub,html}) /// send email to delivery man //
         return res.redirect(`${process.env.FRONTEND_URL}/payment/success/${tran_id}`)

@@ -3,7 +3,7 @@ import { db } from '../config/db.js';
 import { delivery_table } from '../models/deliveryModel.js';
 import { TokenVerify } from '../middleware/tokenVerifyMiddleware.js';
 import { users_table } from '../models/userModel.js';
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { and, cosineDistance, eq, isNotNull } from 'drizzle-orm';
 import { order_table } from '../models/restaurantModel.js';
 import { getIO } from './Socket.js';
 import notification_table from '../models/NotificationModal.js';
@@ -70,7 +70,7 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, async (req, res) => {
         .fullJoin(delivery_table, eq(users_table.id, delivery_table.user_id))
         .where(eq(users_table.role, 'deliver_hero')); // filter by role
 
-    console.log(user_Join_deliverHero);
+    // console.log(user_Join_deliverHero);
 
     res.status(200).send(user_Join_deliverHero);
 })
@@ -79,7 +79,7 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, async (req, res) => {
 DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
     const id = parseInt(req.params?.id);
     const { order_id } = req.body;
-    console.log('order_id', typeof order_id)
+    // console.log('order_id', typeof order_id)
     // update deliver-table status //
     const updateDeliverStatus = await db.update(delivery_table).set({ status: false }).where(eq(delivery_table.id, id)).returning();
     if (updateDeliverStatus.length === 0) {
@@ -99,7 +99,7 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
         read: false
     };
     await db.insert(notification_table).values(messageData);
-    console.log('socket_id', socket_id)
+    // console.log('socket_id', socket_id)
     const io = await getIO();
     io.to(socket_id).emit('order-assigned', { message: `New order assigned: #${order_id}` });
 
@@ -121,11 +121,43 @@ DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, async
         cus_phone: order_table.customer_phone,
         status: order_table.status
     }).from(order_table).innerJoin(users_table,eq(users_table.id,order_table.cus_id)).where(and(eq(order_table.owner_id,parseInt(id)),isNotNull(order_table.delivery_id)));
-    console.log('order list for delivery::: ',order_list)
+    // console.log('order list for delivery::: ',order_list)
     if (order_list.length === 0) {
         return res.status(400).send({ message: 'order is not found !' })
     }
     res.status(200).send(order_list)
+})
+
+// delivery boy complete her deliver and change status for get money ///
+DeliveryHeroRouter.patch('/change_delivery_status/:id/:email',TokenVerify,async(req,res)=>{
+ const id = parseInt(req.params.id);
+ const {email}= req.params;
+ const {status,OTP} = req.body;
+ console.log(status,email,id,OTP,typeof(OTP))
+ if(email !== req.email ){
+    return res.status(401).send({message:'Unauthorize user access !'})
+ }
+
+ const deliver_man = await db.select().from(delivery_table).where(eq(delivery_table.email,email));
+ if(deliver_man.length === 0){
+    return res.status(400).send({message:'delivery man is not found !'});
+ }
+ const verifyOrderList= await db.select().from(order_table).where(and(eq(order_table.id,id),eq(order_table.OTP,OTP)));
+ if(verifyOrderList.length === 0){
+    return res.status(404).send({message:"Order verify failed !"})
+ }
+ // send payment to delivery man account / casually, It's not for real payment //
+ const payment = 50 ;
+ const payment_Delivery_hero= await db.update(delivery_table).set({balance:payment}).where(eq(delivery_table.id,deliver_man[0]?.id)).returning();
+ if(payment_Delivery_hero.length === 0){
+    return res.status(404).send({message:'delivery payment failed !'})
+ }
+ const order_status_update = await db.update(order_table).set({status:status,OTP:null}).where(and(eq(order_table.id,id),eq(order_table.delivery_id,deliver_man[0]?.id))).returning();
+ console.log('order status ::',order_status_update)
+ if(order_status_update.length === 0){
+    return res.status(500).send({message:'status update failed !'})
+ }
+ res.status(200).send({message:'delivery Complete !'})
 })
 
 

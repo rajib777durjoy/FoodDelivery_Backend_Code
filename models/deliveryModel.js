@@ -1,4 +1,4 @@
-import { boolean, integer, pgTable, serial, text, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, numeric, pgTable, serial, text, varchar } from "drizzle-orm/pg-core";
 import { users_table } from "./userModel.js";
 
 export const delivery_table = pgTable('delivery_table', {
@@ -10,5 +10,6 @@ export const delivery_table = pgTable('delivery_table', {
     location: text('location'),
     status: boolean('status').default(true),
     ride: varchar('ride', { length: 50 }),
+    balance:numeric('balance', { precision: 10, scale: 2, }),
     description: text('description').default('')
 })

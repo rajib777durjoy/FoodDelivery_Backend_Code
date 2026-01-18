@@ -225,6 +225,20 @@
       "when": 1768229835449,
       "tag": "0031_charming_blue_shield",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1768751207010,
+      "tag": "0032_early_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1768751286628,
+      "tag": "0033_normal_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }
