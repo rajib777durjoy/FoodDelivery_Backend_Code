@@ -9,11 +9,12 @@ import AddToCart_table from "../models/AddToCartModal.js";
 import { getIO } from "./Socket.js";
 import { TokenVerify } from "../middleware/tokenVerifyMiddleware.js";
 import { delivery_table } from "../models/deliveryModel.js";
+import verifyOwner from "../middleware/VerifyOwner.js";
 
 
 export const restaurantRouter = express.Router();
 
-restaurantRouter.post('/restaurant_partner', upload.fields([
+restaurantRouter.post('/restaurant_partner',TokenVerify,upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "cover", maxCount: 1 },
 ]), async (req, res) => {
@@ -151,6 +152,17 @@ restaurantRouter.delete('/food_item_delete/:id', async (req, res) => {
     }
     res.status(200).send({ message: 'food item delete successfull' })
 
+})
+
+// earnign page ---- restaurant owner //
+restaurantRouter.get('/earnigs_data/:owner_id',TokenVerify,verifyOwner,async(req,res)=>{
+    const id = parseInt(req.params?.owner_id);
+    const earnign_data= await db.select().from(order_table).where(eq(order_table.owner_id,id))
+    console.log('earning::',earnign_data)
+    if(earnign_data.length === 0){
+        return res.status(500).send({message:'data is not found !'})
+    }
+    res.status(200).send(earnign_data)
 })
 
 restaurantRouter.get('/food_item', async (req, res) => {
@@ -298,7 +310,7 @@ restaurantRouter.get('/my_payment_inbox/:email', TokenVerify, async (req, res) =
     const order_list = await db.select().from(order_table).where(eq(order_table.cus_id, user_id));
     res.status(200).send(order_list);
 })
-restaurantRouter.get('/my_order_list/:email', TokenVerify, async (req, res) => {
+restaurantRouter.get('/my_order_list/:email', TokenVerify,verifyOwner, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(403).send({ message: 'Unauthorized user access !' })
@@ -311,7 +323,7 @@ restaurantRouter.get('/my_order_list/:email', TokenVerify, async (req, res) => {
 })
 
 // get all order list by restaurant owner id // 
-restaurantRouter.get('/order_list/:id', async (req, res) => {
+restaurantRouter.get('/order_list/:id',TokenVerify,verifyOwner, async (req, res) => {
     try {
         const id = Number(req.params.id);
 
@@ -387,4 +399,16 @@ restaurantRouter.get('/all_order_list',TokenVerify, async (req, res) => {
     }
     console.log('order for delivery page::',orderWithFood);
     res.status(200).send(orderWithFood);
+})
+
+// Owner static page  ///
+restaurantRouter.get('/owner_static_page/:Owner_id',TokenVerify,verifyOwner,async(req,res)=>{
+    const id = parseInt(req.params?.Owner_id);
+
+    const order= await db.select().from(order_table).where(eq(order_table.owner_id,id));
+    if(order.length === 0){
+        return res.status(400).send({message:'Order is not found !'})
+    }
+    res.status(200).send(order)
+
 })

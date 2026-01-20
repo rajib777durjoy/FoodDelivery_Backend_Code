@@ -109,18 +109,18 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
 
 // order list for find the deliver_history //
 DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, async (req, res) => {
-    const {id,email} = req.params; // id is string  //
-    console.log(id,email)
+    const { id, email } = req.params; // id is string  //
+    console.log(id, email)
     if (email !== req.email) {
         return res.status(401).send({ message: "Unauthorized user access !" })
     }
 
     const order_list = await db.select({
-        id: order_table.id,customer:users_table.fullname, deliverMan: order_table.delivery_id,
+        id: order_table.id, customer: users_table.fullname, deliverMan: order_table.delivery_id,
         amount: order_table.payment, DueAmount: order_table.dueAmount,
         cus_phone: order_table.customer_phone,
         status: order_table.status
-    }).from(order_table).innerJoin(users_table,eq(users_table.id,order_table.cus_id)).where(and(eq(order_table.owner_id,parseInt(id)),isNotNull(order_table.delivery_id)));
+    }).from(order_table).innerJoin(users_table, eq(users_table.id, order_table.cus_id)).where(and(eq(order_table.owner_id, parseInt(id)), isNotNull(order_table.delivery_id)));
     // console.log('order list for delivery::: ',order_list)
     if (order_list.length === 0) {
         return res.status(400).send({ message: 'order is not found !' })
@@ -129,35 +129,72 @@ DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, async
 })
 
 // delivery boy complete her deliver and change status for get money ///
-DeliveryHeroRouter.patch('/change_delivery_status/:id/:email',TokenVerify,async(req,res)=>{
- const id = parseInt(req.params.id);
- const {email}= req.params;
- const {status,OTP} = req.body;
- console.log(status,email,id,OTP,typeof(OTP))
- if(email !== req.email ){
-    return res.status(401).send({message:'Unauthorize user access !'})
- }
+DeliveryHeroRouter.patch('/change_delivery_status/:id/:email', TokenVerify, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { email } = req.params;
+    const { status, OTP } = req.body;
+    console.log(status, email, id, OTP, typeof (OTP))
+    if (email !== req.email) {
+        return res.status(401).send({ message: 'Unauthorize user access !' })
+    }
 
- const deliver_man = await db.select().from(delivery_table).where(eq(delivery_table.email,email));
- if(deliver_man.length === 0){
-    return res.status(400).send({message:'delivery man is not found !'});
- }
- const verifyOrderList= await db.select().from(order_table).where(and(eq(order_table.id,id),eq(order_table.OTP,OTP)));
- if(verifyOrderList.length === 0){
-    return res.status(404).send({message:"Order verify failed !"})
- }
- // send payment to delivery man account / casually, It's not for real payment //
- const payment = 50 ;
- const payment_Delivery_hero= await db.update(delivery_table).set({balance:payment}).where(eq(delivery_table.id,deliver_man[0]?.id)).returning();
- if(payment_Delivery_hero.length === 0){
-    return res.status(404).send({message:'delivery payment failed !'})
- }
- const order_status_update = await db.update(order_table).set({status:status,OTP:null}).where(and(eq(order_table.id,id),eq(order_table.delivery_id,deliver_man[0]?.id))).returning();
- console.log('order status ::',order_status_update)
- if(order_status_update.length === 0){
-    return res.status(500).send({message:'status update failed !'})
- }
- res.status(200).send({message:'delivery Complete !'})
+    const deliver_man = await db.select().from(delivery_table).where(eq(delivery_table.email, email));
+    if (deliver_man.length === 0) {
+        return res.status(400).send({ message: 'delivery man is not found !' });
+    }
+    const verifyOrderList = await db.select().from(order_table).where(and(eq(order_table.id, id), eq(order_table.OTP, OTP)));
+    if (verifyOrderList.length === 0) {
+        return res.status(404).send({ message: "Order verify failed !" })
+    }
+    // send payment to delivery man account / casually, It's not for real payment //
+    const payment = 50;
+    // const currentBalance = Number(deliver_man[0]?.balance || 0);
+    // const newBalance = currentBalance + payment;
+    const payment_Delivery_hero = await db.update(delivery_table).set({ balance:payment,status:true }).where(eq(delivery_table.id, deliver_man[0]?.id)).returning();
+    if (payment_Delivery_hero.length === 0) {
+        return res.status(404).send({ message: 'delivery payment failed !' })
+    }
+    const order_status_update = await db.update(order_table).set({ status: status, OTP: null }).where(and(eq(order_table.id, id), eq(order_table.delivery_id, deliver_man[0]?.id))).returning();
+    console.log('order status ::', order_status_update)
+    if (order_status_update.length === 0) {
+        return res.status(500).send({ message: 'status update failed !' })
+    }
+    res.status(200).send({ message: 'delivery Complete !' })
+})
+
+// get total earning delivery man  //
+DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify, async (req, res) => {
+    const id = parseInt(req.params.id);
+    console.log('166 line_ id', id)
+    const deliverMan = await db.select().from(delivery_table).where(eq(delivery_table.user_id, id));
+    if (deliverMan.length === 0) {
+        return res.status(401).send({ message: 'delivery man is not found ' })
+    }
+
+    if (deliverMan[0].email !== req.email) {
+        return res.status(401).send({ message: 'Unauthorized user access !' })
+    }
+    console.log(deliverMan[0])
+    res.status(200).send(deliverMan[0]);
+})
+
+DeliveryHeroRouter.get('/static_page/:id',async(req,res)=>{
+  const id = parseInt(req.params?.id);
+  const deliver_list = await db.select({id:order_table.id, status:order_table.status,
+    location:order_table.delivery_location,
+    updated_at:order_table.updated_at,
+    cus_phone:order_table.customer_phone,
+    payment_method:order_table.payment_method,
+    OTP:order_table.OTP,
+    payment:order_table.payment,
+    DueAmount:order_table.dueAmount,
+    quantity:order_table.quantity,
+    payment_tran:order_table.payment_tran_id,
+    balance:delivery_table.balance}).from(delivery_table).innerJoin(order_table,eq(delivery_table.id,order_table.delivery_id)).where(eq(delivery_table.user_id,id));
+  if(deliver_list.length === 0){
+    return res.status(400).send({message:'delivery list is not found !'})
+  }
+  res.status(200).send(deliver_list);
 })
 
 
