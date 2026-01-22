@@ -34,6 +34,9 @@ app.use('/api/restaurant',restaurantRouter);
 app.use('/api/deliveryHero',DeliveryHeroRouter);
 app.use('/api/payment',paymentIntrigate)
 
+app.get('/',(req,res)=>{
+    console.log('server is running !!')
+})
 app.post('/jwt_generate', async (req, res) => {
     const data = req.body;
     const token = await generateToken(data);
