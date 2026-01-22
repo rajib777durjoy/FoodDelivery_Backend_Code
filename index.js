@@ -35,7 +35,8 @@ app.use('/api/deliveryHero',DeliveryHeroRouter);
 app.use('/api/payment',paymentIntrigate)
 
 app.get('/',(req,res)=>{
-    console.log('server is running !!')
+    res.send('server is runing !!')
+    console.log('server is runing !!')
 })
 app.post('/jwt_generate', async (req, res) => {
     const data = req.body;
