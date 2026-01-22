@@ -7,6 +7,8 @@ import { and, cosineDistance, eq, isNotNull } from 'drizzle-orm';
 import { order_table } from '../models/restaurantModel.js';
 import { getIO } from './Socket.js';
 import notification_table from '../models/NotificationModal.js';
+import verifyOwner from '../middleware/VerifyOwner.js';
+import VerifyDeliveryMan from '../middleware/VerifyDeliveryMan.js';
 
 export const DeliveryHeroRouter = express.Router();
 
@@ -44,7 +46,7 @@ DeliveryHeroRouter.post('/create_deliver_hero_profile/:email', TokenVerify, asyn
         message: 'Profile created successfully'
     });
 })
-DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, async (req, res) => {
+DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify,verifyOwner, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(401).send({ message: 'Unauthorized user access ' })
@@ -76,7 +78,7 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, async (req, res) => {
 })
 
 // update delivery status and set deliver_id in order_table //
-DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
+DeliveryHeroRouter.patch('/deliver_man/update/:id',TokenVerify,verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.id);
     const { order_id } = req.body;
     // console.log('order_id', typeof order_id)
@@ -108,7 +110,7 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id', async (req, res) => {
 })
 
 // order list for find the deliver_history //
-DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, async (req, res) => {
+DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify,verifyOwner,async (req, res) => {
     const { id, email } = req.params; // id is string  //
     console.log(id, email)
     if (email !== req.email) {
@@ -163,7 +165,7 @@ DeliveryHeroRouter.patch('/change_delivery_status/:id/:email', TokenVerify, asyn
 })
 
 // get total earning delivery man  //
-DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify, async (req, res) => {
+DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify,VerifyDeliveryMan, async (req, res) => {
     const id = parseInt(req.params.id);
     console.log('166 line_ id', id)
     const deliverMan = await db.select().from(delivery_table).where(eq(delivery_table.user_id, id));
@@ -178,7 +180,7 @@ DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify, async (req, res) => {
     res.status(200).send(deliverMan[0]);
 })
 
-DeliveryHeroRouter.get('/static_page/:id',async(req,res)=>{
+DeliveryHeroRouter.get('/static_page/:id',TokenVerify,VerifyDeliveryMan,async(req,res)=>{
   const id = parseInt(req.params?.id);
   const deliver_list = await db.select({id:order_table.id, status:order_table.status,
     location:order_table.delivery_location,

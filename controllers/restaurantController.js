@@ -10,11 +10,13 @@ import { getIO } from "./Socket.js";
 import { TokenVerify } from "../middleware/tokenVerifyMiddleware.js";
 import { delivery_table } from "../models/deliveryModel.js";
 import verifyOwner from "../middleware/VerifyOwner.js";
+import VerifyDeliveryMan from "../middleware/VerifyDeliveryMan.js";
+import VerifyCustomer from "../middleware/VerifyCustomer.js";
 
 
 export const restaurantRouter = express.Router();
 
-restaurantRouter.post('/restaurant_partner',TokenVerify,upload.fields([
+restaurantRouter.post('/restaurant_partner', TokenVerify, upload.fields([
     { name: "logo", maxCount: 1 },
     { name: "cover", maxCount: 1 },
 ]), async (req, res) => {
@@ -52,8 +54,42 @@ restaurantRouter.post('/restaurant_partner',TokenVerify,upload.fields([
     res.status(200).send({ message: 'restaurant create successfull' })
 }
 )
+// View All restaurant // public 
+restaurantRouter.get('/view_restaurant', async (req, res) => {
+    const restaurant = await db.select().from(restaurant_table);
+    // console.log(restaurant)
+    res.status(200).send(restaurant)
+})
+
+// view restaurant item // public 
+restaurantRouter.get('/view_restaurant_item/:product_id', async (req, res) => {
+    const id = parseInt(req.params?.product_id);
+    // console.log('resid',id)
+    const product = await db.select().from(restaurant_table).where(eq(restaurant_table.id, id));
+    // console.log('product::',product)
+    if (product.length === 0) {
+        return res.status(500).send({ message: 'product is not found !' })
+    }
+    res.status(200).send(product[0])
+})
+// view restaurant food_item // public 
+restaurantRouter.get('/view_restaurant_food_item/:res_id', async (req, res) => {
+    const id = parseInt(req.params?.res_id);
+    const Food_list = await db.select({
+        food_id: food_menu_table.id,
+        category: food_menu_table.category,
+        food_name: food_menu_table.food_name,
+        food_image: food_menu_table.food_image,
+        available: food_menu_table.available,
+        price: food_menu_table.price,
+        owner_id: restaurant_table.user_id
+    }).from(restaurant_table).innerJoin(food_menu_table, eq(food_menu_table.res_id, id));
+    console.log('Food_list:', Food_list)
+    res.status(200).send(Food_list)
+})
+
 // get food item by user_id ///
-restaurantRouter.get('/food_item/:user_id', async (req, res) => {
+restaurantRouter.get('/food_item/:user_id', TokenVerify, verifyOwner, async (req, res) => {
     const id = req.params?.user_id;
     const find_res = await db.select({ id: restaurant_table.id }).from(restaurant_table).where(eq(restaurant_table.user_id, Number(id)))
     const res_id = find_res[0]?.id;
@@ -69,7 +105,7 @@ restaurantRouter.get('/food_item/:user_id', async (req, res) => {
 })
 
 // single food item //
-restaurantRouter.get('/single_food_item/:id', async (req, res) => {
+restaurantRouter.get('/single_food_item/:id', TokenVerify, verifyOwner, async (req, res) => {
     const { id } = req.params;
     const food_id = parseInt(id);
     const single_item = await db.select().from(food_menu_table).where(eq(food_menu_table.id, food_id));
@@ -80,7 +116,7 @@ restaurantRouter.get('/single_food_item/:id', async (req, res) => {
 })
 
 // post food item ///
-restaurantRouter.post('/add_food/:user_id', upload.single('food_image'), async (req, res) => {
+restaurantRouter.post('/add_food/:user_id', upload.single('food_image'), TokenVerify, verifyOwner, async (req, res) => {
     const id = req.params.user_id;
     const find_res = await db.select({ id: restaurant_table.id }).from(restaurant_table).where(eq(restaurant_table.user_id, Number(id)))
     const res_id = find_res[0]?.id;
@@ -116,7 +152,7 @@ restaurantRouter.post('/add_food/:user_id', upload.single('food_image'), async (
 })
 
 // food item edit //
-restaurantRouter.put('/single_food_item/edit/:id', upload.single('food_image'), async (req, res) => {
+restaurantRouter.put('/single_food_item/edit/:id', TokenVerify, verifyOwner, upload.single('food_image'), async (req, res) => {
     const id = parseInt(req.params.id);
     console.log('id', id)
     const data = req.body;
@@ -143,7 +179,7 @@ restaurantRouter.put('/single_food_item/edit/:id', upload.single('food_image'), 
 })
 
 // food item delete //
-restaurantRouter.delete('/food_item_delete/:id', async (req, res) => {
+restaurantRouter.delete('/food_item_delete/:id', TokenVerify, verifyOwner, async (req, res) => {
     const food_id = parseInt(req.params?.id);
     console.log("food_id type:: ", typeof food_id)
     const delete_Food_item = await db.delete(food_menu_table).where(eq(food_menu_table.id, food_id)).returning();
@@ -155,12 +191,12 @@ restaurantRouter.delete('/food_item_delete/:id', async (req, res) => {
 })
 
 // earnign page ---- restaurant owner //
-restaurantRouter.get('/earnigs_data/:owner_id',TokenVerify,verifyOwner,async(req,res)=>{
+restaurantRouter.get('/earnigs_data/:owner_id', TokenVerify, verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.owner_id);
-    const earnign_data= await db.select().from(order_table).where(eq(order_table.owner_id,id))
-    console.log('earning::',earnign_data)
-    if(earnign_data.length === 0){
-        return res.status(500).send({message:'data is not found !'})
+    const earnign_data = await db.select().from(order_table).where(eq(order_table.owner_id, id))
+    console.log('earning::', earnign_data)
+    if (earnign_data.length === 0) {
+        return res.status(500).send({ message: 'data is not found !' })
     }
     res.status(200).send(earnign_data)
 })
@@ -178,7 +214,7 @@ restaurantRouter.get('/Allfood_item', async (req, res) => {
 
 })
 
-restaurantRouter.get('/food_details/:id', async (req, res) => {
+restaurantRouter.get('/food_details/:id', TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id);
     const foodDetails = await db.select().from(food_menu_table).where(eq(food_menu_table.id, id));
     // console.log('food details:::', foodDetails)
@@ -188,7 +224,7 @@ restaurantRouter.get('/food_details/:id', async (req, res) => {
     res.status(200).send(foodDetails[0])
 })
 // get addtocart-database-table data //
-restaurantRouter.get('/cart_item_list/:email', TokenVerify, async (req, res) => {
+restaurantRouter.get('/cart_item_list/:email', TokenVerify, VerifyCustomer, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(401).send({ message: 'Unauthorized user access !' })
@@ -239,7 +275,7 @@ restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
 })
 
 // cart item delete //
-restaurantRouter.delete('/cart_item_delete/:id', async (req, res) => {
+restaurantRouter.delete('/cart_item_delete/:id', TokenVerify, VerifyCustomer, async (req, res) => {
     const id = parseInt(req.params?.id);
     const delete_item = await db.delete(AddToCart_table).where(eq(AddToCart_table.id, id)).returning();
     if (delete_item.length === 0) {
@@ -310,7 +346,7 @@ restaurantRouter.get('/my_payment_inbox/:email', TokenVerify, async (req, res) =
     const order_list = await db.select().from(order_table).where(eq(order_table.cus_id, user_id));
     res.status(200).send(order_list);
 })
-restaurantRouter.get('/my_order_list/:email', TokenVerify,verifyOwner, async (req, res) => {
+restaurantRouter.get('/my_order_list/:email', TokenVerify, VerifyCustomer, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(403).send({ message: 'Unauthorized user access !' })
@@ -323,7 +359,7 @@ restaurantRouter.get('/my_order_list/:email', TokenVerify,verifyOwner, async (re
 })
 
 // get all order list by restaurant owner id // 
-restaurantRouter.get('/order_list/:id',TokenVerify,verifyOwner, async (req, res) => {
+restaurantRouter.get('/order_list/:id', TokenVerify, verifyOwner, async (req, res) => {
     try {
         const id = Number(req.params.id);
 
@@ -340,7 +376,7 @@ restaurantRouter.get('/order_list/:id',TokenVerify,verifyOwner, async (req, res)
                 customer_phone: order_table.customer_phone,
                 payment_tran_id: order_table.payment_tran_id,
                 payment_status: order_table.payment_status,
-                status:order_table.status,
+                status: order_table.status,
                 food_name: food_menu_table.food_name,
                 food_image: food_menu_table.food_image,
             })
@@ -364,17 +400,17 @@ restaurantRouter.get('/order_list/:id',TokenVerify,verifyOwner, async (req, res)
 });
 
 /// all order list for delivery dashboard panel ///
-restaurantRouter.get('/all_order_list',TokenVerify, async (req, res) => {
-    const user = await db.select().from(users_table).where(eq(users_table.email,req?.email));
-    if(user.length === 0){
-        return res.status(400).send({message:'user is not found'})
+restaurantRouter.get('/all_order_list', TokenVerify, VerifyDeliveryMan, async (req, res) => {
+    const user = await db.select().from(users_table).where(eq(users_table.email, req?.email));
+    if (user.length === 0) {
+        return res.status(400).send({ message: 'user is not found' })
     }
     const user_id = user[0].id;
-    const deliverInfo= await db.select().from(delivery_table).where(eq(delivery_table.user_id,user_id));
-    if(deliverInfo.length === 0){
-       return res.status(400).send({message:'deliverInfo is not found'})
+    const deliverInfo = await db.select().from(delivery_table).where(eq(delivery_table.user_id, user_id));
+    if (deliverInfo.length === 0) {
+        return res.status(400).send({ message: 'deliverInfo is not found' })
     }
-    const delivery_id= deliverInfo[0].id;
+    const delivery_id = deliverInfo[0].id;
     const orderWithFood = await db
         .select({
             order_id: order_table.id,
@@ -384,8 +420,8 @@ restaurantRouter.get('/all_order_list',TokenVerify, async (req, res) => {
             customer_phone: order_table.customer_phone,
             payment_tran_id: order_table.payment_tran_id,
             payment_status: order_table.payment_status,
-            delivery_location:order_table.delivery_location,
-            status:order_table.status,
+            delivery_location: order_table.delivery_location,
+            status: order_table.status,
             food_name: food_menu_table.food_name,
             food_image: food_menu_table.food_image,
         })
@@ -393,22 +429,47 @@ restaurantRouter.get('/all_order_list',TokenVerify, async (req, res) => {
         .innerJoin(
             food_menu_table,
             eq(order_table.food_id, food_menu_table.id)
-        ).where(eq(order_table.delivery_id,delivery_id));
-    if(orderWithFood.length === 0){
-        return res.status(404).send({message:'order food is not found !'})
+        ).where(eq(order_table.delivery_id, delivery_id));
+    if (orderWithFood.length === 0) {
+        return res.status(404).send({ message: 'order food is not found !' })
     }
-    console.log('order for delivery page::',orderWithFood);
+    console.log('order for delivery page::', orderWithFood);
     res.status(200).send(orderWithFood);
 })
 
 // Owner static page  ///
-restaurantRouter.get('/owner_static_page/:Owner_id',TokenVerify,verifyOwner,async(req,res)=>{
+restaurantRouter.get('/owner_static_page/:Owner_id', TokenVerify, verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.Owner_id);
 
-    const order= await db.select().from(order_table).where(eq(order_table.owner_id,id));
-    if(order.length === 0){
-        return res.status(400).send({message:'Order is not found !'})
+    const order = await db.select().from(order_table).where(eq(order_table.owner_id, id));
+    if (order.length === 0) {
+        return res.status(400).send({ message: 'Order is not found !' })
     }
     res.status(200).send(order)
 
+})
+
+restaurantRouter.get('/customer_static_page/:cus_id', TokenVerify, VerifyCustomer, async (req, res) => {
+    const Id = Number(req.params?.cus_id);
+
+    const orders = await db
+        .select({
+            order_id: order_table.id,
+            food_id: order_table.food_id,
+            deliveryMan_name:delivery_table.name,
+            deliveryMan_phone:delivery_table.phone,
+            DueAmount:order_table.dueAmount,
+            status:order_table.status,
+            OTP:order_table.OTP,
+        })
+        .from(order_table)
+        .innerJoin(
+            delivery_table,
+            eq(order_table.delivery_id, delivery_table.id)
+        )
+        .where(eq(order_table.cus_id, Id));
+
+    console.log("cus_order list ::", orders);
+
+    res.status(200).send(orders);
 })
