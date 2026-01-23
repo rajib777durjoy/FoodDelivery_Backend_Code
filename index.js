@@ -17,10 +17,13 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app)
 const PORT = process.env.PORT || 5000;
+// app.use(cors({
+//     origin:['https://eatnowfoodorderapp.vercel.app',process.env.FRONTEND_URL],
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+// }));
 app.use(cors({
-    origin:['https://eatnowfoodorderapp.vercel.app',process.env.FRONTEND_URL],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    origin: '*'
 }));
 
 
@@ -31,11 +34,11 @@ app.use(cors({
 app.use(cookieParser());
 app.use(express.json());
 app.use('/api/user', userRouter);
-app.use('/api/restaurant',restaurantRouter);
-app.use('/api/deliveryHero',DeliveryHeroRouter);
-app.use('/api/payment',paymentIntrigate)
+app.use('/api/restaurant', restaurantRouter);
+app.use('/api/deliveryHero', DeliveryHeroRouter);
+app.use('/api/payment', paymentIntrigate)
 
-app.get('/',(req,res)=>{
+app.get('/', (req, res) => {
     res.send('server is runing !!')
     console.log('server is runing !!')
 })
@@ -46,7 +49,7 @@ app.post('/jwt_generate', async (req, res) => {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
-    }).send({message:'token generate successfull'});
+    }).send({ message: 'token generate successfull' });
 })
 
 app.post('/jwt_remove', async (req, res) => {
@@ -67,4 +70,5 @@ app.post('/jwt_remove', async (req, res) => {
 
 server.listen(PORT, () => {
     socket(server)
-    console.log("Server running on port 5000")});
+    console.log("Server running on port 5000")
+});
