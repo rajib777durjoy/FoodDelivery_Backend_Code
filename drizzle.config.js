@@ -9,7 +9,7 @@ export default {
   // database credentials
   dbCredentials: {
     url: process.env.PSQL_DATABASE_URL,  
-    ssl: process.env.NODE_ENV === 'production', 
+    ssl: { rejectUnauthorized: false },
   },
 };
 
