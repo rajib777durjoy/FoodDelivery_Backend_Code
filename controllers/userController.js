@@ -12,7 +12,7 @@ export const userRouter = express.Router();
 userRouter.get('/check_db', async (req, res) => {
   const users = await db.select().from(users_table).limit(2);
   console.log('Users:', users);
-  res.send({ message: 'hello world !!' ,user:users})
+  res.send({ message: 'hello world !!' ,})
 })
 userRouter.post('/user_data', async (req, res) => {
   const data = req.body;
