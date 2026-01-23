@@ -10,18 +10,20 @@ import { order_table } from '../models/restaurantModel.js';
 export const userRouter = express.Router();
 userRouter.post('/user_data', async (req, res) => {
     const data = req.body;
-    const check_user = await db.select().from(users_table).where(eq(users_table.email, data.email));
+    console.log('user data:',data)
+    const check_user = await db.select().from(users_table).where(eq(users_table.email,data.email));
     if (check_user.length > 0) {
         return res.status(200).send({ message: 'you already user' })
     }
-    const user_data_save = await db.insert(users_table).values(data).returning();
+    const user_data_save = await db.insert(users_table).values({fullname:data?.fullname,email:data?.email,profile:data?.profile}).returning();
     if (!user_data_save) {
         return res.status(500).send({ message: 'user data not save ' })
     }
-    console.log('user db:', user_data_save);
+    // console.log('user db:', user_data_save);
     res.status(200).send({ message: true })
 
 })
+
 
 userRouter.get('/user_data',async (req, res) => {
     const email = req.email;
