@@ -16,7 +16,7 @@ userRouter.post('/user_data', async (req, res) => {
         return res.status(200).send({ message: 'you already user' })
     }
     const user_data_save = await db.insert(users_table).values({fullname:data?.fullname,email:data?.email,profile:data?.profile}).returning();
-    if (!user_data_save) {
+    if (user_data_save.length === 0 ) {
         return res.status(500).send({ message: 'user data not save ' })
     }
     // console.log('user db:', user_data_save);
