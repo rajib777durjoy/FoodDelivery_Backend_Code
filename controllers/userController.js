@@ -8,6 +8,12 @@ import notification_table from '../models/NotificationModal.js';
 import { order_table } from '../models/restaurantModel.js';
 
 export const userRouter = express.Router();
+
+userRouter.get('/check_db',async(req,res)=>{
+  const data= db.select().from(users_table).where(eq(users_table.email,'durjoy2001chando@gmail.com'));
+  console.log('check user data::',data)
+  res.send(data)
+})
 userRouter.post('/user_data', async (req, res) => {
   const data = req.body;
   console.log('user data:', data);
