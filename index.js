@@ -18,10 +18,14 @@ const app = express();
 const server = http.createServer(app)
 const PORT = process.env.PORT || 5000;
 app.use(cors({
-    origin:['https://eatnowfoodorderapp.vercel.app'],
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
-}));
+    origin:'*',
+    credentials:true,
+}))
+// app.use(cors({
+//     origin:['https://eatnowfoodorderapp.vercel.app'],
+//     credentials: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
+// }));
 
 
 
