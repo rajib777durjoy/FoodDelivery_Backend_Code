@@ -11,7 +11,7 @@ let location = {}
 export const socket = (server) => {
     io = new Server(server, {
         cors: {
-            origin:[process.env.FRONTEND_URL],
+            origin:['https://eatnowfoodorderapp.vercel.app',process.env.FRONTEND_URL,],
             methods: ["GET", "POST"],
         },
     });
