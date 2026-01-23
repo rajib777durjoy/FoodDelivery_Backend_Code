@@ -8,7 +8,7 @@ export default {
   dialect: 'postgresql',
   // database credentials
   dbCredentials: {
-    url: process.env.PSQL_DATABASE_URL,  
+    connectionString: process.env.PSQL_DATABASE_URL,  
     ssl: { rejectUnauthorized: false },
   },
 };
