@@ -4,13 +4,14 @@ import { users_table } from "../models/userModel.js";
 import { eq } from "drizzle-orm";
 import { delivery_table } from "../models/deliveryModel.js";
 import { order_table } from '../models/restaurantModel.js'
-
+import dotenv from "dotenv";
+dotenv.config();
 let io;
 let location = {}
 export const socket = (server) => {
     io = new Server(server, {
         cors: {
-            origin:["http://localhost:5173",process.env.FRONTEND_URL,'https://eatnowfoodorderapp.vercel.app'],
+            origin:[process.env.FRONTEND_URL],
             methods: ["GET", "POST"],
         },
     });
