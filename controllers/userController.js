@@ -12,18 +12,17 @@ export const userRouter = express.Router();
 userRouter.get('/check_db', async (req, res) => {
   const users = await db.select().from(users_table).limit(2);
   console.log('Users:', users);
-  res.send({ message: 'hello world !!' ,})
+  res.send({ message: 'hello world !!' ,users})
 })
-userRouter.post('/user_data', async (req, res) => {
-  const data = req.body;
-  console.log('user data:', data);
 
+userRouter.post('/user_data', async(req,res) => {
+  const data = req.body;
+  // console.log('user data:', data);
   try {
     // Validate email exists
     if (!data?.email) {
       return res.status(400).send({ message: 'Email is required' });
     }
-
     // Check if user already exists
     const check_user = await db
       .select()
@@ -38,23 +37,15 @@ userRouter.post('/user_data', async (req, res) => {
     const user_data_save = await db
       .insert(users_table)
       .values({
-        fullname: data?.fullname || '',
+        fullname: data?.fullname,
         email: data.email,
-        profile: data?.profile || '',
+        profile: data?.profile,
       })
-      .returning({
-        id: users_table.id,
-        fullname: users_table.fullname,
-        email: users_table.email,
-        profile: users_table.profile,
-        role: users_table.role,
-        socket_id: users_table.socket_id,
-        createdAt: users_table.createdAt
-      });
+      .returning();
 
     console.log('user data saved:', user_data_save[0]);
 
-    res.status(200).send({ message: true });
+    res.status(200).send({ message: 'signIn successfull' });
 
   } catch (err) {
     console.log('user_data error:', err);
