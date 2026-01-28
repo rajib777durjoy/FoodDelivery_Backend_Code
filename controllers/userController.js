@@ -30,7 +30,7 @@ userRouter.post('/user_data', async(req,res) => {
       .where(eq(users_table.email, data?.email));
 
     if (check_user.length > 0) {
-      return res.status(200).send({ message: 'You are already a user' });
+      return res.status(200).send(check_user[0]);
     }
 
     // Insert new user safely
@@ -43,7 +43,7 @@ userRouter.post('/user_data', async(req,res) => {
       })
       .returning();
 
-   return res.status(200).send({ message: 'signIn successfull' });
+   return res.status(200).send(user_data_save[0]);
 
   } catch (err) {
    return res.status(500).send({ message: 'Internal server error', error: err.message });

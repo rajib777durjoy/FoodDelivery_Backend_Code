@@ -440,10 +440,9 @@ restaurantRouter.get('/all_order_list', TokenVerify, VerifyDeliveryMan, async (r
 // Owner static page  ///
 restaurantRouter.get('/owner_static_page/:Owner_id', TokenVerify, verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.Owner_id);
-
     const order = await db.select().from(order_table).where(eq(order_table.owner_id, id));
     if (order.length === 0) {
-        return res.status(400).send({ message: 'Order is not found !' })
+        return res.status(200).send({ message: 'Order is not found !' })
     }
     res.status(200).send(order)
 
