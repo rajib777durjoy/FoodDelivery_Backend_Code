@@ -43,13 +43,10 @@ userRouter.post('/user_data', async(req,res) => {
       })
       .returning();
 
-    console.log('user data saved:', user_data_save[0]);
-
-    res.status(200).send({ message: 'signIn successfull' });
+   return res.status(200).send({ message: 'signIn successfull' });
 
   } catch (err) {
-    console.log('user_data error:', err);
-    res.status(500).send({ message: 'Internal server error', error: err.message });
+   return res.status(500).send({ message: 'Internal server error', error: err.message });
   }
 });
 
