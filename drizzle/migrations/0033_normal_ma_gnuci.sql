@@ -1,1 +1,0 @@
-ALTER TABLE "delivery_table" RENAME COLUMN "dueAmount" TO "balance";

@@ -1,14 +1,12 @@
 import express from 'express';
-import { db } from '../config/db.js';
-import { delivery_table } from '../models/deliveryModel.js';
+import { sql } from '../config/db.js';
 import { TokenVerify } from '../middleware/tokenVerifyMiddleware.js';
-import { users_table } from '../models/userModel.js';
-import { and, cosineDistance, eq, isNotNull } from 'drizzle-orm';
-import { order_table } from '../models/restaurantModel.js';
 import { getIO } from './Socket.js';
-import notification_table from '../models/NotificationModal.js';
 import verifyOwner from '../middleware/VerifyOwner.js';
 import VerifyDeliveryMan from '../middleware/VerifyDeliveryMan.js';
+
+
+
 
 export const DeliveryHeroRouter = express.Router();
 
@@ -22,22 +20,20 @@ DeliveryHeroRouter.post('/create_deliver_hero_profile/:email', TokenVerify, asyn
     const data = req.body;  // delivery form data //
 
 
-    // check delivery profile //
-    const check_profile = await db.select().from(delivery_table).where(eq(delivery_table.email, email));
+//     // check delivery profile //
+
+const check_profile = await sql`select * from delivery_table where email = ${email} ;`;
     if (check_profile.length > 0) {
         return res.status(200).send({ message: 'Delivery profile already exists' })
     };
 
     // create delivery profile //
-    const create_profile = await db.insert(delivery_table).values(data).returning();
+    const create_profile = await sql`INSERT INTO delivery_table (user_id,name,email,phone,location,ride,description) VALUES(${data.user_id},${data.name},${data.email},${phone},${data.location},${data.ride},${data.description})`
     if (create_profile.length === 0) {
         return res.status(400).send({ message: "Failed to create delivery hero profile" })
     }
-    const update_user_role = await db
-        .update(users_table)
-        .set({ role: 'deliver_hero' })
-        .where(eq(users_table.id, data?.user_id))
-        .returning();
+
+const update_user_role = await sql`UPDATE * from users_table SET role = 'deliver_hero' where id = ${data?.user_id} RETURNING * ;`;
 
     if (update_user_role.length === 0) {
         return res.status(400).send({ message: "Failed to update user role ! " })
@@ -51,28 +47,28 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify,verifyOwner, async (re
     if (email !== req.email) {
         return res.status(401).send({ message: 'Unauthorized user access ' })
     }
-    // const deliver_man = await db.select().from(users_table).where(eq(users_table.role, 'deliver_hero'));
+const deliver_man = await sql`select * from users_table where role = 'deliver_hero' ;`;
 
+const result = await sql`
+SELECT 
+    u.id AS user_id,
+    u.fullname,
+    u.email,
+    u.profile,
+    d.id AS deliverHero_id,
+    u.socket_id AS socket,
+    d.phone,
+    d.location,
+    d.ride,
+    d.description,
+    d.status
+FROM users_table u
+FULL JOIN delivery_table d 
+    ON u.id = d.user_id
+WHERE u.role = 'deliver_hero';
+`; // filter by role
 
-    const user_Join_deliverHero = await db
-        .select({
-            user_id: users_table.id,
-            fullname: users_table.fullname,
-            email: users_table.email,
-            profile: users_table.profile,
-            deliverHero_id: delivery_table.id,
-            socket: users_table.socket_id,
-            phone: delivery_table.phone,
-            location: delivery_table.location,
-            ride: delivery_table.ride,
-            description: delivery_table.description,
-            status: delivery_table.status,
-        })
-        .from(users_table)
-        .fullJoin(delivery_table, eq(users_table.id, delivery_table.user_id))
-        .where(eq(users_table.role, 'deliver_hero')); // filter by role
-
-    // console.log(user_Join_deliverHero);
+    // // console.log(user_Join_deliverHero);
 
     res.status(200).send(user_Join_deliverHero);
 })
@@ -81,26 +77,45 @@ DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify,verifyOwner, async (re
 DeliveryHeroRouter.patch('/deliver_man/update/:id',TokenVerify,verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.id);
     const { order_id } = req.body;
-    // console.log('order_id', typeof order_id)
+    console.log('order_id', typeof order_id)
     // update deliver-table status //
-    const updateDeliverStatus = await db.update(delivery_table).set({ status: false }).where(eq(delivery_table.id, id)).returning();
+const updateDeliverStatus = await sql`
+UPDATE delivery_table
+SET status = ${false}
+WHERE id = ${id}
+RETURNING *;
+`;
     if (updateDeliverStatus.length === 0) {
         return res.status(400).send({ message: 'Delivery_table Update Failed' })
     }
-    const Add_DeliverId_IN_Order_table = await db.update(order_table).set({ delivery_id: id, status: 'On_the_way' }).where(eq(order_table.id, parseInt(order_id))).returning();
+const Add_DeliverId_IN_Order_table = await sql`
+UPDATE order_table
+SET 
+    delivery_id = ${id},
+    status = 'On_the_way'
+WHERE id = ${parseInt(order_id)}
+RETURNING *;
+`;
     if (Add_DeliverId_IN_Order_table.length === 0) {
         return res.status(400).send({ message: 'Order_table delivery_id Set Failed' })
     }
-    const Deliver_user = await db.select().from(users_table).where(eq(users_table.id, updateDeliverStatus[0].user_id));
+const Deliver_user = await sql`
+SELECT *
+FROM users_table
+WHERE id = ${updateDeliverStatus[0].user_id};
+`;
 
     const socket_id = Deliver_user[0].socket_id;
-    const messageData = {
-        user_id: Deliver_user[0].id,
-        order_id: order_id,
-        message: `New order assigned: #${order_id}`,
-        read: false
-    };
-    await db.insert(notification_table).values(messageData);
+const messageData = await sql`
+INSERT INTO notification_table (user_id, order_id, message, read)
+VALUES (
+    ${Deliver_user[0].id},
+    ${order_id},
+    ${`New order assigned: #${order_id}`},
+    ${false}
+)
+RETURNING *;
+`;
     // console.log('socket_id', socket_id)
     const io = await getIO();
     io.to(socket_id).emit('order-assigned', { message: `New order assigned: #${order_id}` });
@@ -109,7 +124,7 @@ DeliveryHeroRouter.patch('/deliver_man/update/:id',TokenVerify,verifyOwner, asyn
 
 })
 
-// order list for find the deliver_history //
+// // order list for find the deliver_history //
 DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify,verifyOwner,async (req, res) => {
     const { id, email } = req.params; // id is string  //
     console.log(id, email)
@@ -117,20 +132,30 @@ DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify,verify
         return res.status(401).send({ message: "Unauthorized user access !" })
     }
 
-    const order_list = await db.select({
-        id: order_table.id, customer: users_table.fullname, deliverMan: order_table.delivery_id,
-        amount: order_table.payment, DueAmount: order_table.dueAmount,
-        cus_phone: order_table.customer_phone,
-        status: order_table.status
-    }).from(order_table).innerJoin(users_table, eq(users_table.id, order_table.cus_id)).where(and(eq(order_table.owner_id, parseInt(id)), isNotNull(order_table.delivery_id)));
-    // console.log('order list for delivery::: ',order_list)
+const order_list = await sql`
+SELECT 
+    o.id,
+    u.fullname AS customer,
+    o.delivery_id AS deliverMan,
+    o.payment AS amount,
+    o.dueAmount AS "DueAmount",
+    o.customer_phone AS cus_phone,
+    o.status
+FROM order_table o
+INNER JOIN users_table u 
+    ON u.id = o.cus_id
+WHERE 
+    o.owner_id = ${parseInt(id)}
+    AND o.delivery_id IS NOT NULL;
+`;
+//     // console.log('order list for delivery::: ',order_list)
     if (order_list.length === 0) {
         return res.status(400).send({ message: 'order is not found !' })
     }
     res.status(200).send(order_list)
 })
 
-// delivery boy complete her deliver and change status for get money ///
+// // delivery boy complete her deliver and change status for get money ///
 DeliveryHeroRouter.patch('/change_delivery_status/:id/:email', TokenVerify, async (req, res) => {
     const id = parseInt(req.params.id);
     const { email } = req.params;
@@ -140,35 +165,58 @@ DeliveryHeroRouter.patch('/change_delivery_status/:id/:email', TokenVerify, asyn
         return res.status(401).send({ message: 'Unauthorize user access !' })
     }
 
-    const deliver_man = await db.select().from(delivery_table).where(eq(delivery_table.email, email));
+const deliver_man = await sql`
+SELECT *
+FROM delivery_table
+WHERE email = ${email};
+`;
     if (deliver_man.length === 0) {
         return res.status(400).send({ message: 'delivery man is not found !' });
     }
-    const verifyOrderList = await db.select().from(order_table).where(and(eq(order_table.id, id), eq(order_table.OTP, OTP)));
     if (verifyOrderList.length === 0) {
         return res.status(404).send({ message: "Order verify failed !" })
     }
     // send payment to delivery man account / casually, It's not for real payment //
     const payment = 50;
-    // const currentBalance = Number(deliver_man[0]?.balance || 0);
-    // const newBalance = currentBalance + payment;
-    const payment_Delivery_hero = await db.update(delivery_table).set({ balance:payment,status:true }).where(eq(delivery_table.id, deliver_man[0]?.id)).returning();
+    const currentBalance = Number(deliver_man[0]?.balance || 0);
+    const newBalance = currentBalance + payment;
+const payment_Delivery_hero = await sql`
+UPDATE delivery_table
+SET 
+    balance = ${payment},
+    status = ${true}
+WHERE id = ${deliver_man[0]?.id}
+RETURNING *;
+`;
     if (payment_Delivery_hero.length === 0) {
         return res.status(404).send({ message: 'delivery payment failed !' })
     }
-    const order_status_update = await db.update(order_table).set({ status: status, OTP: null }).where(and(eq(order_table.id, id), eq(order_table.delivery_id, deliver_man[0]?.id))).returning();
-    console.log('order status ::', order_status_update)
+const order_status_update = await sql`
+UPDATE order_table
+SET 
+    status = ${status},
+    OTP = NULL
+WHERE 
+    id = ${id}
+    AND delivery_id = ${deliver_man[0]?.id}
+RETURNING *;
+`;
+// //     console.log('order status ::', order_status_update)
     if (order_status_update.length === 0) {
         return res.status(500).send({ message: 'status update failed !' })
     }
     res.status(200).send({ message: 'delivery Complete !' })
 })
 
-// get total earning delivery man  //
+// // get total earning delivery man  //
 DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify,VerifyDeliveryMan, async (req, res) => {
     const id = parseInt(req.params.id);
     console.log('166 line_ id', id)
-    const deliverMan = await db.select().from(delivery_table).where(eq(delivery_table.user_id, id));
+const deliverMan = await sql`
+SELECT *
+FROM delivery_table
+WHERE user_id = ${id};
+`;
     if (deliverMan.length === 0) {
         return res.status(401).send({ message: 'delivery man is not found ' })
     }
@@ -182,17 +230,25 @@ DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify,VerifyDeliveryMan, async
 
 DeliveryHeroRouter.get('/static_page/:id',TokenVerify,VerifyDeliveryMan,async(req,res)=>{
   const id = parseInt(req.params?.id);
-  const deliver_list = await db.select({id:order_table.id, status:order_table.status,
-    location:order_table.delivery_location,
-    updated_at:order_table.updated_at,
-    cus_phone:order_table.customer_phone,
-    payment_method:order_table.payment_method,
-    OTP:order_table.OTP,
-    payment:order_table.payment,
-    DueAmount:order_table.dueAmount,
-    quantity:order_table.quantity,
-    payment_tran:order_table.payment_tran_id,
-    balance:delivery_table.balance}).from(delivery_table).innerJoin(order_table,eq(delivery_table.id,order_table.delivery_id)).where(eq(delivery_table.user_id,id));
+const deliver_list = await sql`
+SELECT 
+    o.id,
+    o.status,
+    o.delivery_location AS location,
+    o.updated_at,
+    o.customer_phone AS cus_phone,
+    o.payment_method,
+    o.OTP,
+    o.payment,
+    o.dueAmount AS "DueAmount",
+    o.quantity,
+    o.payment_tran_id AS payment_tran,
+    d.balance
+FROM delivery_table d
+INNER JOIN order_table o
+    ON d.id = o.delivery_id
+WHERE d.user_id = ${id};
+`;
   if(deliver_list.length === 0){
     return res.status(400).send({message:'delivery list is not found !'})
   }

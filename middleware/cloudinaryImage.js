@@ -10,6 +10,7 @@ cloudinary.config({
 });
 
 export const ImageUpload = async (file) => {
+    console.log('files',file)
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       { folder: "restaurants" }, 
@@ -18,8 +19,7 @@ export const ImageUpload = async (file) => {
         else reject(error);           
       }
     );
-
-    stream.end(file.buffer); 
+   stream.end(file.buffer); 
   });
 };
 

@@ -1,1 +1,0 @@
-ALTER TABLE "restaurant_table" ALTER COLUMN "id" SET DATA TYPE serial;

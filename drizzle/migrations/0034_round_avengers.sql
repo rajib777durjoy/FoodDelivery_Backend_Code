@@ -1,1 +1,0 @@
-ALTER TABLE "order_table" ADD COLUMN "updated_at" timestamp DEFAULT now();

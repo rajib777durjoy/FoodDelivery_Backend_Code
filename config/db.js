@@ -1,15 +1,10 @@
+import { neon } from "@neondatabase/serverless";
 import dotenv from "dotenv";
+
 dotenv.config();
 
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-const { Pool } = pg;
+export const sql = neon(process.env.psql);
+console.log(sql);
 
-const pool = new Pool({
-  connectionString: process.env.PSQL_DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
-});
-
-export const db = drizzle(pool);
 
 

@@ -1,1 +1,0 @@
-ALTER TABLE "users_table" ADD COLUMN "task" text DEFAULT null;

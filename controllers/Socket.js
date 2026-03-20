@@ -1,9 +1,5 @@
 import { Server } from "socket.io";
-import { db } from "../config/db.js";
-import { users_table } from "../models/userModel.js";
-import { eq } from "drizzle-orm";
-import { delivery_table } from "../models/deliveryModel.js";
-import { order_table } from '../models/restaurantModel.js'
+import { sql } from "../config/db.js";
 import dotenv from "dotenv";
 dotenv.config();
 let io;
@@ -11,7 +7,7 @@ let location = {}
 export const socket = (server) => {
     io = new Server(server, {
         cors: {
-            origin:['https://eatnowfoodorderapp.vercel.app',process.env.FRONTEND_URL,],
+            origin:['http://localhost:5173',process.env.FRONTEND_URL,],
             methods: ["GET", "POST"],
         },
     });
@@ -22,10 +18,7 @@ export const socket = (server) => {
         // store socket id
         socket.on("currentuser", async ({ email }) => {
             try {
-                await db
-                    .update(users_table)
-                    .set({ socket_id: socket.id })
-                    .where(eq(users_table.email, email));
+                await sql`UPDATE users_table SET socket_id = ${ socket.id } WHERE email = ${ email } ;` ;
             } catch (err) {
                 console.log("error:", err);
             }
@@ -42,14 +35,11 @@ export const socket = (server) => {
                 };
 
                 console.log('kkdfd', location)
-                const user_socket = await db.select().from(users_table).where(eq(users_table.id, data.user_id));
+                const user_socket = await sql`SELECT * FROM users_table WHERE id = ${ data.user_id };`;
                 const socket_id = user_socket[0]?.socket_id;
-
                 console.log('socket_id:::', location[socket_id])
                 // send location to delivery hero
                 io.to(socket_id).emit("receive_location",(location[socket_id]));
-
-
             } catch (err) {
                 console.log("send_location error:", err);
             }
@@ -58,10 +48,7 @@ export const socket = (server) => {
         // disconnect
         socket.on("disconnect", async () => {
             console.log("User disconnected:", socket.id);
-            await db
-                .update(users_table)
-                .set({ socket_id: "" })
-                .where(eq(users_table.socket_id, socket.id));
+            await sql`UPDATE users_table SET socket_id = '' WHERE socket_id = ${ socket.id } RETURNING *;`;
         });
     });
 

@@ -6,33 +6,28 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node index.js",
-    "dev": "nodemon index.js",
-    "drizzle": "drizzle-kit",
-    "migrate": "drizzle-kit migrate",
-    "generate": "drizzle-kit generate",
-    "push": "drizzle-kit push",
-    "studio": "drizzle-kit studio"
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
     "cloudinary": "^2.8.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
-    "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.12",
     "pg": "^8.16.3",
+    "redis": "^5.11.0",
     "socket.io": "^4.8.3",
     "sslcommerz-lts": "^1.2.0"
   },
   "devDependencies": {
-    "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8"
+    "@types/pg": "^8.16.0"
   }
 }

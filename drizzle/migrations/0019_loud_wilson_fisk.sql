@@ -1,2 +1,0 @@
-ALTER TABLE "AddToCart_table" ADD COLUMN "user_id" integer;--> statement-breakpoint
-ALTER TABLE "AddToCart_table" ADD CONSTRAINT "AddToCart_table_user_id_users_table_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users_table"("id") ON DELETE cascade ON UPDATE cascade;

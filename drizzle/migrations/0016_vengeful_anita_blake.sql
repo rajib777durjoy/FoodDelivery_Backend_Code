@@ -1,1 +1,0 @@
-ALTER TABLE "order_table" ADD COLUMN "payment_method" text DEFAULT '';

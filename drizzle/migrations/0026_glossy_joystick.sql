@@ -1,1 +1,0 @@
-ALTER TABLE "delivery_table" ADD COLUMN "phone" text NOT NULL;

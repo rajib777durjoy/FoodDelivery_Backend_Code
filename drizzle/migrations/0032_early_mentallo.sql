@@ -1,1 +1,0 @@
-ALTER TABLE "delivery_table" ADD COLUMN "dueAmount" numeric(10, 2);
