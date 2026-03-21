@@ -275,11 +275,11 @@ restaurantRouter.get('/earnigs_data/:owner_id', TokenVerify, verifyOwner, async 
   FROM order_table
   WHERE owner_id = ${id};
 `;
-    console.log('earning::', earnign_data)
-    if (earnign_data.length === 0) {
+    console.log('earning::', earning_data)
+    if (earning_data.length === 0) {
         return res.status(500).send({ message: 'data is not found !' })
     }
-    res.status(200).send(earnign_data)
+    res.status(200).send(earning_data)
 })
 
 restaurantRouter.get('/food_item', async (req, res) => {
@@ -460,7 +460,7 @@ restaurantRouter.get('/my_payment_inbox/:email', TokenVerify, async (req, res) =
 
     const user = await sql`select * from users_table where email = ${email} ;`;
     const user_id = user[0].id; // order-table cus_id === paid payment user //
-    const order_list = await sql`select * from order_table where cus_id = user_id ;`;
+    const order_list = await sql`select * from order_table where cus_id = ${user_id} ;`;
     res.status(200).send(order_list);
 })
 restaurantRouter.get('/my_order_list/:email', TokenVerify, VerifyCustomer, async (req, res) => {
