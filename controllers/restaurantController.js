@@ -302,7 +302,7 @@ restaurantRouter.get('/Allfood_item', async (req, res) => {
 
 })
 
-restaurantRouter.get('/food_details/:id', TokenVerify, async (req, res) => {
+restaurantRouter.get('/food_details/:id',TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id);
     const foodDetails = await sql`
   SELECT *
@@ -337,7 +337,7 @@ restaurantRouter.get('/cart_item_list/:email', TokenVerify, VerifyCustomer, asyn
     // 2️⃣ Check if cart items exist
     const cart_item = await sql`
   SELECT *
-  FROM AddToCart_table
+  FROM addtocart_table
   WHERE user_id = ${user_id};
 `;
 
@@ -355,7 +355,7 @@ restaurantRouter.get('/cart_item_list/:email', TokenVerify, VerifyCustomer, asyn
     f.food_image,
     f.category,
     f.description
-  FROM AddToCart_table c
+  FROM addtocart_table c
   INNER JOIN food_menu_table f
     ON c.food_id = f.id
   WHERE c.user_id = ${user_id};
@@ -369,19 +369,21 @@ restaurantRouter.get('/cart_item_list/:email', TokenVerify, VerifyCustomer, asyn
 // /// post in addtocart database table //
 restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id); // food_id
+    console.log('email',req?.email)
     const { quantity } = req.body; // order item count //
-    const user = await sql`select * users_table where email = ${req?.email} ;`;
+    const user = await sql`select * from users_table where email = ${req?.email} ;`;
+    console.log('add to cart user:',user)
     const user_id = user[0].id;
-    const isExist = await sql`select * from AddToCart_table where food_id = ${id} AND user_id = ${user_id} ;`;
+    const isExist = await sql`select * from addtocart_table where food_id = ${id} AND user_id = ${user_id} ;`;
     if (isExist.length > 0) {
         return res.status(200).send({ message: 'This item is already in your cart.' })
     }
-    const foodQuery = await sql`select * food_menu_table where id = ${id} ;`;
+    const foodQuery = await sql`select * from food_menu_table where id = ${id} ;`;
     if (foodQuery.length === 0) {
         return res.status(404).send({ message: 'food item is not found !' })
     }
     const data = { food_id: foodQuery[0].id, res_id: foodQuery[0].res_id, user_id, quantity }
-    const AddToCart = await sql`INSERT INTO AddToCart_table (food_id,res_id,user_id,quantity) VALUES (${data?.food_id, data?.res_id, data?.user_id, data?.quantity}) RETURNING * ;`;
+    const AddToCart = await sql`INSERT INTO addtocart_table (food_id,res_id,user_id,quantity) VALUES (${data?.food_id},${data?.res_id}, ${data?.user_id}, ${data?.quantity}) RETURNING * ;`;
     if (AddToCart.length === 0) {
         return res.status(404).send({ message: 'Failed to add item to cart ' })
     }
@@ -392,7 +394,7 @@ restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
 restaurantRouter.delete('/cart_item_delete/:id', TokenVerify, VerifyCustomer, async (req, res) => {
     const id = parseInt(req.params?.id);
 
-    const delete_item = await sql`DELETE FROM AddToCart_table where id = ${id} RETURNING * ;`;
+    const delete_item = await sql`DELETE FROM addtocart_table where id = ${id} RETURNING * ;`;
     if (delete_item.length === 0) {
         return res.status(404).send({ message: 'Delete Cart item failed' })
     }
