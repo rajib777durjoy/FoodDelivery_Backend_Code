@@ -420,7 +420,7 @@ restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
   WHERE f.id = ${id};
 `;
 
-        //         console.log(data);
+
 
         const order_food = await sql`INSERT INTO order_table (user_id,food_id) values (${data[0].user_id},${data[0].food_id}) RETURNING * ;`;
         if (order_food.length === 0) {
@@ -583,7 +583,7 @@ restaurantRouter.get('/customer_static_page/:cus_id', TokenVerify, VerifyCustome
   WHERE o.cus_id = ${Id};
 `;
 
-    console.log("cus_order list ::", orders);
+
 
     res.status(200).send(orders);
 })

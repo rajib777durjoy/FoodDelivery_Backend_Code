@@ -18,22 +18,28 @@ DeliveryHeroRouter.post('/create_deliver_hero_profile/:email', TokenVerify, asyn
         });
     }
     const data = req.body;  // delivery form data //
+    console.log("delivery data::", data)
 
+    //     // check delivery profile //
 
-//     // check delivery profile //
-
-const check_profile = await sql`select * from delivery_table where email = ${email} ;`;
+    const check_profile = await sql`select * from delivery_table where email = ${email} ;`;
     if (check_profile.length > 0) {
         return res.status(200).send({ message: 'Delivery profile already exists' })
     };
 
     // create delivery profile //
-    const create_profile = await sql`INSERT INTO delivery_table (user_id,name,email,phone,location,ride,description) VALUES(${data.user_id},${data.name},${data.email},${phone},${data.location},${data.ride},${data.description})`
+    const create_profile = await sql`INSERT INTO delivery_table (user_id,name,email,phone,location,ride,description) VALUES(${data?.user_id},${data?.name},${data?.email},${data?.phone},${data?.location},${data?.ride},${data?.description}) RETURNING *;`;
     if (create_profile.length === 0) {
         return res.status(400).send({ message: "Failed to create delivery hero profile" })
     }
-
-const update_user_role = await sql`UPDATE * from users_table SET role = 'deliver_hero' where id = ${data?.user_id} RETURNING * ;`;
+    console.log('create profile::', create_profile)
+   const update_user_role = await sql`
+  UPDATE users_table
+  SET role = 'deliver_hero'
+  WHERE id = ${data?.user_id}
+  RETURNING *;
+`;
+    console.log('user update role ;', update_user_role)
 
     if (update_user_role.length === 0) {
         return res.status(400).send({ message: "Failed to update user role ! " })
@@ -42,14 +48,15 @@ const update_user_role = await sql`UPDATE * from users_table SET role = 'deliver
         message: 'Profile created successfully'
     });
 })
-DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify,verifyOwner, async (req, res) => {
+
+DeliveryHeroRouter.get('/deliver_man/:email', TokenVerify, verifyOwner, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
         return res.status(401).send({ message: 'Unauthorized user access ' })
     }
-const deliver_man = await sql`select * from users_table where role = 'deliver_hero' ;`;
-
-const result = await sql`
+    const deliver_man = await sql`select * from users_table where role = 'deliver_hero' ;`;
+    // console.log('delivery_man',deliver_man)
+    const result = await sql`
 SELECT 
     u.id AS user_id,
     u.fullname,
@@ -66,20 +73,19 @@ FROM users_table u
 FULL JOIN delivery_table d 
     ON u.id = d.user_id
 WHERE u.role = 'deliver_hero';
-`; // filter by role
+`; 
+    console.log('delivery list::',result);
 
-    // // console.log(user_Join_deliverHero);
-
-    res.status(200).send(user_Join_deliverHero);
+    res.status(200).send(result);
 })
 
 // update delivery status and set deliver_id in order_table //
-DeliveryHeroRouter.patch('/deliver_man/update/:id',TokenVerify,verifyOwner, async (req, res) => {
+DeliveryHeroRouter.put('/deliver_man/update/:id', TokenVerify, verifyOwner, async (req, res) => {
     const id = parseInt(req.params?.id);
     const { order_id } = req.body;
-    console.log('order_id', typeof order_id)
+    // console.log('order_id', typeof order_id)
     // update deliver-table status //
-const updateDeliverStatus = await sql`
+    const updateDeliverStatus = await sql`
 UPDATE delivery_table
 SET status = ${false}
 WHERE id = ${id}
@@ -88,7 +94,7 @@ RETURNING *;
     if (updateDeliverStatus.length === 0) {
         return res.status(400).send({ message: 'Delivery_table Update Failed' })
     }
-const Add_DeliverId_IN_Order_table = await sql`
+    const Add_DeliverId_IN_Order_table = await sql`
 UPDATE order_table
 SET 
     delivery_id = ${id},
@@ -96,17 +102,20 @@ SET
 WHERE id = ${parseInt(order_id)}
 RETURNING *;
 `;
+// console.log('Add deliverId:',Add_DeliverId_IN_Order_table) 
+
     if (Add_DeliverId_IN_Order_table.length === 0) {
         return res.status(400).send({ message: 'Order_table delivery_id Set Failed' })
     }
-const Deliver_user = await sql`
+    const Deliver_user = await sql`
 SELECT *
 FROM users_table
 WHERE id = ${updateDeliverStatus[0].user_id};
 `;
+console.log('deliver_user_update:',Deliver_user);
 
     const socket_id = Deliver_user[0].socket_id;
-const messageData = await sql`
+    const messageData = await sql`
 INSERT INTO notification_table (user_id, order_id, message, read)
 VALUES (
     ${Deliver_user[0].id},
@@ -124,15 +133,16 @@ RETURNING *;
 
 })
 
+
 // // order list for find the deliver_history //
-DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify,verifyOwner,async (req, res) => {
+DeliveryHeroRouter.get('/order_for_delivery_list/:id/:email', TokenVerify, verifyOwner, async (req, res) => {
     const { id, email } = req.params; // id is string  //
     console.log(id, email)
     if (email !== req.email) {
         return res.status(401).send({ message: "Unauthorized user access !" })
     }
 
-const order_list = await sql`
+    const order_list = await sql`
 SELECT 
     o.id,
     u.fullname AS customer,
@@ -148,7 +158,7 @@ WHERE
     o.owner_id = ${parseInt(id)}
     AND o.delivery_id IS NOT NULL;
 `;
-//     // console.log('order list for delivery::: ',order_list)
+    //     // console.log('order list for delivery::: ',order_list)
     if (order_list.length === 0) {
         return res.status(400).send({ message: 'order is not found !' })
     }
@@ -165,7 +175,7 @@ DeliveryHeroRouter.patch('/change_delivery_status/:id/:email', TokenVerify, asyn
         return res.status(401).send({ message: 'Unauthorize user access !' })
     }
 
-const deliver_man = await sql`
+    const deliver_man = await sql`
 SELECT *
 FROM delivery_table
 WHERE email = ${email};
@@ -180,7 +190,7 @@ WHERE email = ${email};
     const payment = 50;
     const currentBalance = Number(deliver_man[0]?.balance || 0);
     const newBalance = currentBalance + payment;
-const payment_Delivery_hero = await sql`
+    const payment_Delivery_hero = await sql`
 UPDATE delivery_table
 SET 
     balance = ${payment},
@@ -191,7 +201,7 @@ RETURNING *;
     if (payment_Delivery_hero.length === 0) {
         return res.status(404).send({ message: 'delivery payment failed !' })
     }
-const order_status_update = await sql`
+    const order_status_update = await sql`
 UPDATE order_table
 SET 
     status = ${status},
@@ -201,7 +211,7 @@ WHERE
     AND delivery_id = ${deliver_man[0]?.id}
 RETURNING *;
 `;
-// //     console.log('order status ::', order_status_update)
+    // //     console.log('order status ::', order_status_update)
     if (order_status_update.length === 0) {
         return res.status(500).send({ message: 'status update failed !' })
     }
@@ -209,10 +219,10 @@ RETURNING *;
 })
 
 // // get total earning delivery man  //
-DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify,VerifyDeliveryMan, async (req, res) => {
+DeliveryHeroRouter.get('/totalEarning/:id', TokenVerify, VerifyDeliveryMan, async (req, res) => {
     const id = parseInt(req.params.id);
     console.log('166 line_ id', id)
-const deliverMan = await sql`
+    const deliverMan = await sql`
 SELECT *
 FROM delivery_table
 WHERE user_id = ${id};
@@ -228,9 +238,9 @@ WHERE user_id = ${id};
     res.status(200).send(deliverMan[0]);
 })
 
-DeliveryHeroRouter.get('/static_page/:id',TokenVerify,VerifyDeliveryMan,async(req,res)=>{
-  const id = parseInt(req.params?.id);
-const deliver_list = await sql`
+DeliveryHeroRouter.get('/static_page/:id', TokenVerify, VerifyDeliveryMan, async (req, res) => {
+    const id = parseInt(req.params?.id);
+    const deliver_list = await sql`
 SELECT 
     o.id,
     o.status,
@@ -249,10 +259,10 @@ INNER JOIN order_table o
     ON d.id = o.delivery_id
 WHERE d.user_id = ${id};
 `;
-  if(deliver_list.length === 0){
-    return res.status(400).send({message:'delivery list is not found !'})
-  }
-  res.status(200).send(deliver_list);
+    if (deliver_list.length === 0) {
+        return res.status(400).send({ message: 'delivery list is not found !' })
+    }
+    res.status(200).send(deliver_list);
 })
 
 

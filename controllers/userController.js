@@ -35,7 +35,7 @@ userRouter.get('/user_data/:email', async (req, res) => {
   const email = req.params?.email;
   console.log(email)
   const user = await sql`select * from users_table where email = ${email}`;
-  console.log('get user ::', user)
+  // console.log('get user ::', user)
   if (user.length === 0) {
     return res.status(500).send({ message: 'user is not match' })
   }
