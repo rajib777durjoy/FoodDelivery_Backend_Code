@@ -26,19 +26,20 @@ userRouter.post('/user_data', async (req, res) => {
   const email = data?.email;
   const profile = data?.profile;
   const user_data_save = await sql` Insert Into users_table (fullname,email,profile) 
-    values (${fullname},${email},${profile}) RETURNING *`
+    values (${fullname},LOWER(${email}),${profile}) RETURNING *`
   console.log('user save data ', user_data_save[0]);
   return res.status(200).send(user_data_save[0]);
 });
 
 userRouter.get('/user_data/:email', async (req, res) => {
   const email = req.params?.email;
-  console.log(email)
-  const user = await sql`select * from users_table where email = ${email}`;
+  // console.log(email)
+  const user = await sql`Select * From users_table Where email = ${email}`;
   // console.log('get user ::', user)
   if (user.length === 0) {
     return res.status(500).send({ message: 'user is not match' })
   }
+  console.log(user[0])
   res.status(200).send(user[0])
 })
 
