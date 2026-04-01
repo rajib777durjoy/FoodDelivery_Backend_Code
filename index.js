@@ -20,7 +20,7 @@ const server = http.createServer(app)
 const PORT = process.env.PORT || 5000;
 
 app.use(cors({
-    origin: ['https://fooddelivery-704m.onrender.com', 'http://localhost:5173'],
+    origin: ['https://fooddelivery-704m.onrender.com',],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
