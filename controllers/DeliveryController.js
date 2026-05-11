@@ -102,7 +102,10 @@ SET
 WHERE id = ${parseInt(order_id)}
 RETURNING *;
 `;
-// console.log('Add deliverId:',Add_DeliverId_IN_Order_table) 
+
+const socket = await getIO();
+socket.emit('order_status_update',Add_DeliverId_IN_Order_table[0]) //------------- ToDo for MyOrdeers page 
+console.log('Add deliverId:',Add_DeliverId_IN_Order_table) 
 
     if (Add_DeliverId_IN_Order_table.length === 0) {
         return res.status(400).send({ message: 'Order_table delivery_id Set Failed' })
@@ -131,7 +134,7 @@ RETURNING *;
 
     res.status(200).send({ message: 'Booking Successfull !' })
 
-})
+});
 
 
 // // order list for find the deliver_history //

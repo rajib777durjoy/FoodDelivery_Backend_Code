@@ -169,7 +169,7 @@ restaurantRouter.post('/add_food/:user_id', upload.single('food_image'), TokenVe
   WHERE user_id = ${Number(id)};
 `;
     const res_id = find_res[0]?.id;
-    console.log('res_id::',res_id , 'hello world add food :')
+    console.log('res_id::', res_id, 'hello world add food :')
     if (!res_id) {
         return res.status(404).send({ message: "Restaurant not found" });
     }
@@ -302,7 +302,7 @@ restaurantRouter.get('/Allfood_item', async (req, res) => {
 
 })
 
-restaurantRouter.get('/food_details/:id',TokenVerify, async (req, res) => {
+restaurantRouter.get('/food_details/:id', TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id);
     const foodDetails = await sql`
   SELECT *
@@ -369,10 +369,10 @@ restaurantRouter.get('/cart_item_list/:email', TokenVerify, VerifyCustomer, asyn
 // /// post in addtocart database table //
 restaurantRouter.post('/AddToCart/:id', TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id); // food_id
-    console.log('email',req?.email)
+    console.log('email', req?.email)
     const { quantity } = req.body; // order item count //
     const user = await sql`select * from users_table where email = ${req?.email} ;`;
-    console.log('add to cart user:',user)
+    console.log('add to cart user:', user)
     const user_id = user[0].id;
     const isExist = await sql`select * from addtocart_table where food_id = ${id} AND user_id = ${user_id} ;`;
     if (isExist.length > 0) {
@@ -405,7 +405,7 @@ restaurantRouter.delete('/cart_item_delete/:id', TokenVerify, VerifyCustomer, as
 restaurantRouter.post('/food_order/:id', TokenVerify, async (req, res) => {
     const id = parseInt(req.params?.id);
     const email = req.email;
-    if (!req.email) {
+    if (!req?.email) {
         return res.status(404).send({ message: 'Unauthorize access !' })
     }
     try {
@@ -463,6 +463,8 @@ restaurantRouter.get('/my_payment_inbox/:email', TokenVerify, async (req, res) =
     const order_list = await sql`select * from order_table where cus_id = ${user_id} ;`;
     res.status(200).send(order_list);
 })
+
+// my order list for customer Myorders page // 
 restaurantRouter.get('/my_order_list/:email', TokenVerify, VerifyCustomer, async (req, res) => {
     const { email } = req.params;
     if (email !== req.email) {
@@ -470,9 +472,14 @@ restaurantRouter.get('/my_order_list/:email', TokenVerify, VerifyCustomer, async
     }
     const user = await sql`select * from users_table where email = ${email} ;`;
     const user_id = user[0].id; // order-table cus_id === paid payment user //
-    const order_list = await sql`select * from order_table where cus_id = ${user_id} ;`;
-    // console.log('order_list',order_list)
-    res.status(200).send(order_list);
+    // const order_list = await sql`select * from order_table where cus_id = ${user_id} ;`;
+    const orderWithFood= await sql`select o.id ,o.cus_id,o.food_id,o.delivery_id,o.quantity,o.payment,o.dueamount,o.delivery_location,o.status,
+    o.otp,f.food_name,f.food_image,f.price From order_table o INNER JOIN food_menu_table f on o.food_id = f.id where o.cus_id = ${user_id};`;
+    console.log('order with food::',orderWithFood)
+    if(orderWithFood.length === 0 ){
+        return res.status(404).send({message:'order is not found! '})
+    }
+    res.status(200).send(orderWithFood);
 })
 
 // get all order list by restaurant owner id //
@@ -483,7 +490,7 @@ restaurantRouter.get('/order_list/:id', TokenVerify, verifyOwner, async (req, re
         if (isNaN(id)) {
             return res.status(400).send({ message: "Invalid user id" });
         }
-      const orderWithFood = await sql`SELECT 
+        const orderWithFood = await sql`SELECT 
       o.id AS order_id,
       o.quantity,
       o.payment,
@@ -577,13 +584,13 @@ restaurantRouter.get('/customer_static_page/:cus_id', TokenVerify, VerifyCustome
       o.dueAmount AS DueAmount,
       o.status,
       o.OTP
-  FROM orders o
-  INNER JOIN delivery d
+  FROM order_table o
+  INNER JOIN delivery_table d
       ON o.delivery_id = d.id
   WHERE o.cus_id = ${Id};
 `;
-
-
-
+ if(orders.length === 0){
+    return res.status(200).send({ message:"order is not found!"})
+ }
     res.status(200).send(orders);
 })

@@ -16,7 +16,7 @@ const paymentIntrigate = express.Router();
 
 paymentIntrigate.post('/init', TokenVerify, async (req, res) => {
     try {
-
+        
         const { food_id: id, paymentMethod, name, phone, address, food_name, quantity } = req.body;
         const food_id = parseInt(id)
 
